@@ -15,6 +15,21 @@ npm run dev
 
 Open the URL printed by Vite. `npm run build` checks TypeScript and creates `dist/`; `npm run preview` serves the production build. `npm test` checks progression, resource renewal, save validation, and recovery resources.
 
+## Work on another machine
+
+Install Git and a supported Node.js version, then run:
+
+```sh
+git clone https://github.com/thejas666/seasail.git
+cd seasail
+npm ci
+npm run dev
+```
+
+Before editing on an existing machine, run `git pull --ff-only` with a clean working tree. After making changes, run `git add .`, `git commit -m "Describe your changes"`, and `git push`. Commit and push before switching machines. `node_modules`, generated builds, and local scratch files are excluded by `.gitignore`; `npm ci` restores dependencies from the lockfile.
+
+GitHub synchronizes source code. Browser saves stay on the device and browser where the game was played. Pushing source does not automatically update a hosted game unless a deployment workflow is configured.
+
 ## Controls
 
 | Input | Action |
@@ -31,6 +46,7 @@ Open the URL printed by Vite. `npm run build` checks TypeScript and creates `dis
 | Esc | Pause / close panel / release captured mouse |
 | X | Lower / raise anchor |
 | Space ashore | Jump |
+| Shift ashore | Jog |
 | 1–8 | Activate the corresponding hotbar slot |
 
 The pregame menu includes Start Game, Continue, Settings, and Controls. Performance mode reduces grass instances from 8,000 to 2,200 per island, removes shadows, limits render resolution, and reduces decorative foliage and rain. Physical tree trunks and their collision shapes remain present in both modes.
@@ -58,3 +74,7 @@ Progress is saved locally under `seasurvival.sunhaven.v1`. Continue resumes at t
 The first-playthrough pacing target is 15–25 minutes with optional fishing and exploration; this needs human playtesting. This release is desktop-first. No multiplayer, mobile controls, or additional maps are included. The lower graphics option disables shadows and reduces pixel density.
 
 The sail uses a small Verlet cloth membrane with mast and boom attachments. Wind, gusts, and sailing speed deform it; performance mode runs the solver at 30 Hz and reduced motion holds the cloth steady. The pennant also flutters. Birds face their actual travel direction. Their heads scan and track the nearby explorer, eyes blink, wings alternate flapping and gliding, primary feathers spread, and feet extend for landing. Perched gulls balance, shuffle, preen, and chirp with their beaks; nearby gulls tuck their wings along their bodies. Performance mode reduces distant bird and feather detail.
+
+The explorer now uses an articulated rig with two-bone aiming for elbows, knees, wrists, and ankles. Walking blends into idle; gathering includes a short approach, bend, reach, lift, and stow, with inventory awarded once at hand contact. Casting, waiting for a bite, reeling, and lifting a catch use a visible rod, spinning reel, and line. Steering hands follow the boat’s tiller and the body balances with the hull. In first person, the body and hat are hidden while action arms and equipment remain visible.
+
+The boat lantern has glass panes, corner bars, a vented cap, a handle, a flame, and damped sway. The prop pass also adds barrel hoops and lids, crate braces and nails, driftwood growth rings, dock cleats and fenders, rope wraps and support beams, island sign lettering, chart markings, detailed channel buoys, lookout bracing and railings, a chart table, lighthouse portholes and lens framing, and cottage doors, shutters, chimneys, and warm night windows. Shared materials and merged geometry keep the added detail inexpensive.
