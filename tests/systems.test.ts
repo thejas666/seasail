@@ -1,0 +1,12 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {MAP} from '../src/data';
+import {freshState} from '../src/state';
+import {tickSurvival,recoverBoat} from '../src/systems/survival';
+import {tickFishing,catchFish,type Fishing} from '../src/systems/fishing';
+import {canEnterChannel,walkable} from '../src/systems/navigation';
+test('the outer channel requires both the chart and reinforcement',()=>{const s=freshState();assert.equal(canEnterChannel(s),false);s.chart=true;assert.equal(canEnterChannel(s),false);s.chart=false;s.reinforced=true;assert.equal(canEnterChannel(s),false);s.chart=true;assert.equal(canEnterChannel(s),true);});
+test('zero nourishment stays nonfatal; disabled boat recovery preserves inventory and progress',()=>{const s=freshState();s.nourishment=.01;s.inventory.wood=4;s.inventory.scrap=2;s.chart=true;s.lastDock='wreck';tickSurvival(s,10);assert.equal(s.nourishment,0);assert.equal(s.playTime,10);const inventory={...s.inventory};s.condition=0;assert.equal(recoverBoat(s),true);assert.equal(s.condition,65);assert.deepEqual(s.inventory,inventory);assert.equal(s.chart,true);assert.equal(s.lastDock,'wreck');assert.equal(recoverBoat(s),false);});
+test('fishing has a generous bite window; a catch is awarded once and journal entries are unique',()=>{const s=freshState();const f:Fishing={phase:'waiting',timer:1,fish:2};assert.equal(catchFish(s,f),null);assert.equal(tickFishing(f,1),'changed');assert.equal(f.phase,'bite');assert.equal(f.timer,3.5);assert.equal(tickFishing(f,2.5),'unchanged');assert.deepEqual(catchFish(s,f),{discovered:true,fish:2});assert.equal(catchFish(s,f),null);assert.equal(s.inventory.fish,1);const f2:Fishing={phase:'bite',timer:2,fish:2};assert.deepEqual(catchFish(s,f2),{discovered:false,fish:2});assert.deepEqual(s.fishJournal,[2]);});
+test('missed fish cost no items and return to idle',()=>{const s=freshState();const before=JSON.stringify(s);const f:Fishing={phase:'bite',timer:1,fish:0};assert.equal(tickFishing(f,1),'changed');assert.equal(f.phase,'missed');assert.equal(catchFish(s,f),null);assert.equal(tickFishing(f,4),'finished');assert.equal(JSON.stringify(s),before);});
+test('all jetties give a connected walkable path from disembark point to land',()=>{for(const i of MAP.islands){for(let z=i.dock[1]-12;z>i.z;z-=.5)assert.equal(walkable(i.dock[0],z,i),true,`${i.name}: ${z}`);assert.equal(walkable(i.x+i.radius+20,i.z,i),false);}});
