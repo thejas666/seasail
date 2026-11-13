@@ -2,7 +2,7 @@
 
 A relaxing single-player 3D browser adventure. Sail a little boat, collect island supplies, fish, reinforce your hull, and follow a chart to Sunhaven Harbor. Artwork and sound are generated locally or bundled with the game; no account is needed for local play.
 
-The latest art pass uses rounded illustrated trees, a wooden sailboat, dense grass, soft sea mist, and a compact game HUD. Optimized fern and rock meshes are bundled locally with their credits in `public/assets/CREDITS.md`; the game makes no external asset requests.
+The latest art pass uses rounded illustrated trees, a wooden sailboat, dense grass, soft sea mist, and a compact game HUD. Ferns, flowers, and rocks use the same illustrated palette, and all artwork is generated directly in the game. The game makes no external asset requests.
 
 ## Run
 
@@ -56,3 +56,5 @@ TypeScript + Vite + Three.js, with DOM overlays and Web Audio ambience. The map 
 Progress is saved locally under `seasurvival.sunhaven.v1`. Continue resumes at the last safe dock, preserving objectives, collection state, settings, and survival meters. Opening a panel pauses active play. Clearing browser data removes the save. First-person camera and pointer lock work best on desktop Chrome or Edge with hardware acceleration enabled.
 
 The first-playthrough pacing target is 15–25 minutes with optional fishing and exploration; this needs human playtesting. This release is desktop-first. No multiplayer, mobile controls, or additional maps are included. The lower graphics option disables shadows and reduces pixel density.
+
+The sail uses a small Verlet cloth membrane with mast and boom attachments. Wind, gusts, and sailing speed deform it; performance mode runs the solver at 30 Hz and reduced motion holds the cloth steady. The pennant also flutters. Birds face their actual travel direction. Their heads scan and track the nearby explorer, eyes blink, wings alternate flapping and gliding, primary feathers spread, and feet extend for landing. Perched gulls balance, shuffle, preen, and chirp with their beaks; nearby gulls tuck their wings along their bodies. Performance mode reduces distant bird and feather detail.
