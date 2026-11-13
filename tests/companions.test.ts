@@ -1,8 +1,27 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {Group,Scene,Vector3} from 'three';
+import {Box3,Group,InstancedMesh,Mesh,Scene,Vector3} from 'three';
 import {Seabirds,flightHeading,type BirdRig} from '../src/companions';
 test('gulls land on a slow boat and take off during a squall',()=>{const scene=new Scene(),boat=new Group();scene.add(boat);boat.position.set(20,0,-50);const birds=new Seabirds(scene);for(let j=0;j<360;j++)birds.update(40,1/60,boat,0,0,false);assert.ok(birds.perchBlend>.99);const perch=boat.localToWorld(new Vector3(-1.5,1.36,1.8));assert.ok(birds.birds[0].position.distanceTo(perch)<.2);for(let j=0;j<360;j++)birds.update(45,1/60,boat,0,1,false);assert.ok(birds.perchBlend<.01);assert.ok(birds.birds[0].position.y>5);});
 test('bird forward direction follows its flight tangent rather than pointing backward',()=>{for(let a=0;a<Math.PI*2;a+=.15){const heading=flightHeading(a),forward=new Vector3(-Math.sin(heading),0,-Math.cos(heading)),tangent=new Vector3(Math.cos(a),0,-Math.sin(a));assert.ok(forward.dot(tangent)>.999);}});
 test('animated birds actually face their measured movement after turning',()=>{const scene=new Scene(),boat=new Group(),birds=new Seabirds(scene);scene.add(boat);let previous=new Vector3();for(let frame=0;frame<360;frame++){previous.copy(birds.birds[4].position);birds.update(frame/60,1/60,boat,2,0,false);}const bird=birds.birds[4],travel=bird.position.clone().sub(previous);travel.y=0;travel.normalize();const forward=new Vector3(-Math.sin(bird.rotation.y),0,-Math.cos(bird.rotation.y));assert.ok(forward.dot(travel)>.98);});
 test('perched birds scan, blink, articulate feathers, and remain finite in performance mode',()=>{const scene=new Scene(),boat=new Group(),birds=new Seabirds(scene);scene.add(boat);for(let i=0;i<300;i++)birds.update(40,1/60,boat,0,0,false);const rig=birds.birds[0].userData.rig as BirdRig;const before=rig.head.rotation.y;for(let i=0;i<120;i++)birds.update(44,1/60,boat,0,0,false);assert.notEqual(rig.head.rotation.y,before);assert.equal(rig.feathers[0].count,6);for(let i=0;i<100;i++)birds.update(46+i/60,1/60,boat,3,.5,false,undefined,true);assert.equal(birds.birds[8].visible,false);for(const bird of birds.birds)assert.ok([...bird.position.toArray(),bird.rotation.x,bird.rotation.y,bird.rotation.z].every(Number.isFinite));});
+
+test('illustrated gull keeps attached blinking eyes and compact bounds after static geometry batching',()=>{
+  const birds=new Seabirds(new Scene()),boat=new Group(),bird=birds.birds[0],rig=bird.userData.rig as BirdRig;
+  for(let frame=0;frame<300;frame++)birds.update(40,1/60,boat,0,0,false);
+  for(const eye of rig.eyes){assert.equal(eye.parent,rig.head);assert.ok(eye.scale.y<=.02);}
+  bird.position.set(0,0,0);bird.rotation.set(0,0,0);bird.scale.setScalar(1);
+  const bounds=new Box3().setFromObject(bird);assert.ok(bounds.max.y<.75);assert.ok(bounds.min.y>-.6);
+});
+
+test('gull switches between folded and spread feathers with bounded rendering cost and a streamlined flight neck',()=>{
+  const birds=new Seabirds(new Scene()),boat=new Group(),bird=birds.birds[0],rig=bird.userData.rig as BirdRig;
+  for(const perched of [true,false]){
+    for(let frame=0;frame<360;frame++)birds.update(perched?40:45,1/60,boat,perched?0:3,perched?0:1,false);
+    assert.equal(rig.foldedWings[0].visible,perched);assert.equal(rig.wings[0].visible,!perched);
+    assert.ok(perched?rig.head.position.y>.44:rig.head.position.y<.21);
+    let draws=0,triangles=0;bird.traverseVisible(o=>{if(o instanceof Mesh){draws++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o instanceof InstancedMesh?o.count:1);}});
+    assert.ok(draws<=30,`${draws} draw calls`);assert.ok(triangles<22000,`${triangles} triangles`);
+  }
+});
