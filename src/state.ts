@@ -1,6 +1,11 @@
 import { COST, MAP, PICKUPS, type Inventory, type Resource } from './data';
 export const SAVE_KEY = 'seasurvival.sunhaven.v1';
+export const SETTINGS_KEY = 'seasurvival.settings.v1';
 export type Settings = {volume: number; sensitivity: number; reducedMotion: boolean; lowGraphics: boolean};
+export function readSettings(fallback:Settings):Settings {
+  try{const raw=localStorage.getItem(SETTINGS_KEY);if(!raw)return fallback;const s=JSON.parse(raw);return {volume:typeof s.volume==='number'&&Number.isFinite(s.volume)?Math.max(0,Math.min(1,s.volume)):fallback.volume,sensitivity:typeof s.sensitivity==='number'&&Number.isFinite(s.sensitivity)?Math.max(.3,Math.min(2,s.sensitivity)):fallback.sensitivity,reducedMotion:typeof s.reducedMotion==='boolean'?s.reducedMotion:fallback.reducedMotion,lowGraphics:typeof s.lowGraphics==='boolean'?s.lowGraphics:fallback.lowGraphics};}catch{return fallback;}
+}
+export function saveSettings(s:Settings){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));return true;}catch{return false;}}
 export type GameState = {
   version:1; map:string; inventory:Inventory; collected:Record<string,number>; visited:string[];
   discovered:string[]; fishJournal:number[]; rod:boolean; chart:boolean; reinforced:boolean;

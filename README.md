@@ -1,6 +1,8 @@
 # SeaSurvival — The Sunhaven Passage
 
-A relaxing single-player 3D browser adventure. Sail a little boat, collect island supplies, fish, reinforce your hull, and follow a chart to Sunhaven Harbor. All geometry and sound are generated locally; there are no external asset or account requirements.
+A relaxing single-player 3D browser adventure. Sail a little boat, collect island supplies, fish, reinforce your hull, and follow a chart to Sunhaven Harbor. Artwork and sound are generated locally or bundled with the game; no account is needed for local play.
+
+The latest art pass uses rounded illustrated trees, a wooden sailboat, dense grass, soft sea mist, and a compact game HUD. Optimized fern and rock meshes are bundled locally with their credits in `public/assets/CREDITS.md`; the game makes no external asset requests.
 
 ## Run
 
@@ -27,6 +29,15 @@ Open the URL printed by Vite. `npm run build` checks TypeScript and creates `dis
 | Tab | Supplies, upgrades, objectives, fish journal |
 | M | Archipelago map |
 | Esc | Pause / close panel / release captured mouse |
+| X | Lower / raise anchor |
+| Space ashore | Jump |
+| 1–8 | Activate the corresponding hotbar slot |
+
+The pregame menu includes Start Game, Continue, Settings, and Controls. Performance mode reduces grass instances from 8,000 to 2,200 per island, removes shadows, limits render resolution, and reduces decorative foliage and rain. Physical tree trunks and their collision shapes remain present in both modes.
+
+Sailing uses gradual acceleration, coasting, rudder inertia, wind drift, soft impact response, and wave-driven buoyancy. The explorer has acceleration, gravity for small jumps, and collision with trunks, rocks, wrecks, buildings, and jetty posts. All five island locations stay on the map, while the sea fog hides distant shores in the world.
+
+An 18-minute day/night cycle provides a warm sunset and a readable, moonlit night with stars and a boat lantern. Gulls fly around the boat and occasionally land on its rails when it is moving slowly; they leave during squalls. Storms remain brief and forgiving, with soft rain and no combat.
 
 ## First journey
 
