@@ -35,8 +35,8 @@ GitHub synchronizes source code. Browser saves stay on the device and browser wh
 | Input | Action |
 | --- | --- |
 | WASD / arrow keys | Walk; throttle and steer while sailing |
-| Drag mouse | Look around in third person |
-| Click world | Capture mouse in first person |
+| Mouse movement | Look freely in first or third person |
+| Click world | Capture mouse in either view; Esc releases it |
 | Scroll | Third-person camera distance |
 | E | Gather, dock, board |
 | F / Space during fishing | Cast / catch when the bite appears |
@@ -49,7 +49,7 @@ GitHub synchronizes source code. Browser saves stay on the device and browser wh
 | Shift ashore | Jog |
 | 1–8 | Activate the corresponding hotbar slot |
 
-The pregame menu includes Start Game, Continue, Settings, and Controls. Performance mode reduces grass instances from 8,000 to 2,200 per island, removes shadows, limits render resolution, and reduces decorative foliage and rain. Physical tree trunks and their collision shapes remain present in both modes.
+The pregame menu includes Start Game, Continue, Settings, and Controls. Performance mode reduces the new broad-leaved grass field from 1,400 to 500 clumps per island, removes shadows, limits render resolution, and reduces decorative foliage and rain. Physical tree trunks and their collision shapes remain present in both modes.
 
 Sailing uses gradual acceleration, coasting, rudder inertia, wind drift, soft impact response, and wave-driven buoyancy. The explorer has acceleration, gravity for small jumps, and collision with trunks, rocks, wrecks, buildings, and jetty posts. All five island locations stay on the map, while the sea fog hides distant shores in the world.
 
@@ -87,8 +87,18 @@ Bird behavior is driven by independent world-space coastal routes in `src/system
 
 Open `/bird-study.html` on the local server or published Site to inspect the same animated rig used in the game. Choose Perched, Flying, Gliding, Landing, or Take off; pause any pose and inspect it from reference-angle, side, front, or back views. Reference still displays the original stationary model for comparison. Download that static GLB from `public/assets/models/perched-gull.glb` or the study page.
 
-The source model is authored in `src/assets/perched-gull.ts` using a continuous body/neck/head surface, swept thin wing patches, long feather contours, vertex-painted plumage, a curved bill, and webbed feet. `src/assets/animated-gull.ts` builds the game rig directly from those source surfaces. Its flight morph and skin transforms preserve a continuous neck; wing folding morphs the painted surfaces rather than replacing them with a separate bird. The runtime rig uses about 22,000 triangles and 11 draws per bird, with shared geometry. Performance mode displays six birds instead of nine and reduced motion suppresses flapping, scanning, blinking, and optional sway.
+The source model is authored in `src/assets/perched-gull.ts` using a continuous body/neck/head surface, swept thin wing patches, long feather contours, vertex-painted plumage, a curved bill, and webbed feet. `src/assets/animated-gull.ts` builds the game rig directly from those source surfaces. Its flight morph and skin transforms preserve a continuous neck; wing folding morphs the painted surfaces rather than replacing them with a separate bird. The runtime rig uses about 22,000 triangles and 11 draws per bird, with shared geometry. Performance mode displays eight ambient birds instead of twelve and reduced motion suppresses flapping, scanning, blinking, and optional sway.
 
 The downloadable GLB remains an unanimated, single-mesh reference. Run `npm run asset:bird` after editing its source to regenerate that binary, then run `npm test` and `npm run build`. The live animation is driven by the runtime rig rather than embedded GLB animation clips. The original reference image remains outside the shipped game.
 
 Real-gull references used to refine the stylized movement include [RSPB's Herring Gull account](https://www.rspb.org.uk/birds-and-wildlife/herring-gull), [Cornell's gull identification guide](https://www.allaboutbirds.org/guide/Herring_Gull/id), and [Harvey and Inman's study of gull wing morphing](https://pmc.ncbi.nlm.nih.gov/articles/PMC9477410/). The artwork retains the supplied illustration's small dark eyes and warm bill; this is a stylized animation informed by anatomy, not a measured aerodynamic simulation.
+
+## Reference coastal collection
+
+The palms, moss-covered boulders, layered sandstone, grasses, reeds, and pale seed grasses follow the supplied illustrated asset sheet. Open `/coast-study.html` to inspect the four palm variants and the other assets; static `.glb` exports are available under `public/assets/models`. Run `npm run asset:coast` to regenerate them from the authored surfaces in `src/assets/palm-tree.ts`, `src/assets/coastal-nature.ts`, and `src/assets/grass-tuft.ts`.
+
+Palm trunks use curved, tapered rings, warm painted bark, and cooler bases. The broad fronds have sparse triangular edge cuts, a raised midrib, coconuts, and gentle tip motion. Trunks stay planted while the fronds move; collision circles follow the scaled and rotated lower trunks, including each stem in a cluster. Geometry is shared between repeated models, and each palm uses two draws. Rocks and foliage use one material and merged or instanced geometry.
+
+The old short grass field is replaced by the new grass tuft at approximately 1.56 metres, about three-quarters of the explorer's height. A simpler version of the same silhouette is instanced across the islands, with clear paths and space around required pickups. The reference grasses, cattails, and seed grasses also appear as accent clumps. More birds are visible near the coastline without restoring the former boat-centered loops.
+
+Both camera modes now use free mouse look, with no held mouse button. Starting or resuming attempts to capture the cursor; clicking the world captures it again, Esc releases it, and menus release it automatically. Third person can look upward, with a camera height limit above the water. The helm stance and tiller grip are placed clear of the boom and bench; first person uses the actual helm eye position. Night fog and the ocean horizon use the same display-space color and haze density so distant islands no longer become pale silhouettes.

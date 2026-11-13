@@ -23,11 +23,11 @@ test('roaming birds use world-space coast routes instead of repeating boat-cente
 });
 
 test('fast boats and squalls do not attract landings, and performance mode visitors come from visible birds',()=>{
-  const boat=new Group();boat.position.set(19,0,43);const moving=new BirdBehavior(9,42),stormy=new BirdBehavior(9,42),low=new BirdBehavior(9,42);let visitors=0;
+  const boat=new Group();boat.position.set(19,0,43);const moving=new BirdBehavior(12,42),stormy=new BirdBehavior(12,42),low=new BirdBehavior(12,42);let visitors=0;
   for(let n=0;n<12000;n++){
-    moving.update(.1,boat,3,0);stormy.update(.1,boat,0,.8);low.update(.1,boat,0,0,6);
+    moving.update(.1,boat,3,0);stormy.update(.1,boat,0,.8);low.update(.1,boat,0,0,8);
     assert.ok(moving.birds.every(b=>!['approaching','landing','perched'].includes(b.mode)));assert.ok(stormy.birds.every(b=>!['approaching','landing','perched'].includes(b.mode)));
-    low.birds.forEach((b,j)=>{if(b.mode==='perched'){assert.ok(j<6);visitors++;}});
+    low.birds.forEach((b,j)=>{if(b.mode==='perched'){assert.ok(j<8);visitors++;}});
   }
   assert.ok(visitors>0);
 });

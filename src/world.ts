@@ -1,43 +1,26 @@
 import * as Props from './props';
 import {flowerField} from './illustrated-assets';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import * as T from 'three';
 import {MAP,PICKUPS,WORLD_SCALE,type Island} from './data';
 import {terrain,biome,sky,clouds,ocean,groundHeight,localHeight,SKY_COLOR,type Biome} from './environment';
 import {loadNature,plantNature} from './nature';
 import type {BoxObstacle} from './systems/collision';
 import {Seabirds} from './companions';
-import {daylightAt} from './systems/atmosphere';
+import {daylightAt,horizonAt,seaFogDensity} from './systems/atmosphere';
+import {TILLER_BASE,TILLER_GRIP} from './systems/boat-layout';
 import {SailCloth} from './systems/sail-cloth';
 import {createExplorer} from './explorer-model';
 import {BoatLantern} from './lantern';
+import {createPalm,PALM_VARIANTS,setPalmWind,palmColliders} from './assets/palm-tree';
 const mat=(color:T.ColorRepresentation,extra:T.MeshStandardMaterialParameters={})=>new T.MeshStandardMaterial({color,roughness:.96,flatShading:false,...extra});
 const sand=mat('#e0ca94'),wood=mat('#93613c'),darkWood=mat('#503e30'),leaf=mat('#3c7e35'),leafLight=mat('#6d9f3b'),cream=mat('#fff3d6'),coral=mat('#cf7550'),rockMat=mat('#71858b');
 export function mesh(g:T.BufferGeometry,m:T.Material,x=0,y=0,z=0,parent?:T.Object3D){const a=new T.Mesh(g,m);a.position.set(x,y,z);a.castShadow=true;a.receiveShadow=true;parent?.add(a);return a;}
 function box(w:number,h:number,d:number,m:T.Material,x:number,y:number,z:number,p:T.Object3D){return mesh(new RoundedBoxGeometry(w,h,d,1,Math.min(.06,w*.15,h*.15,d*.15)),m,x,y,z,p);}
 function cylinder(rt:number,rb:number,h:number,m:T.Material,x:number,y:number,z:number,p:T.Object3D,n=8){return mesh(new T.CylinderGeometry(rt,rb,h,n),m,x,y,z,p);}
 function lineBetween(a:T.Vector3,b:T.Vector3,r:number,m:T.Material,p:T.Object3D){const o=cylinder(r,r,a.distanceTo(b),m,0,0,0,p,5);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());return o;}
-function mergeParts(root:T.Group,parts:T.Mesh[],material:T.Material){if(!parts.length)return;const geometries=parts.map(part=>{part.updateMatrix();return part.geometry.clone().applyMatrix4(part.matrix);});const geometry=mergeGeometries(geometries,false)!;for(const part of parts){part.removeFromParent();part.geometry.dispose();}for(const geometry of geometries)geometry.dispose();const combined=new T.Mesh(geometry,material);combined.castShadow=combined.receiveShadow=true;root.add(combined);}
-function palm(parent:T.Object3D,x:number,z:number,h=10,seed=0) {
-  const p=new T.Group();p.position.set(x,1.5,z);parent.add(p);
-  for(let j=0;j<5;j++)lineBetween(new T.Vector3(Math.sin(j*.3+seed)*j*.24,j*h/5,0),new T.Vector3(Math.sin((j+1)*.3+seed)*(j+1)*.24,(j+1)*h/5,0),.29-j*.028,wood,p);
-  const top=new T.Vector3(Math.sin(1.5+seed)*1.2,h,0);
-  for(let j=0;j<12;j++){
-    const a=j*Math.PI/6+seed,l=4.8+(j%3)*.5,verts:number[]=[],indexes:number[]=[];
-    for(let k=0;k<=9;k++){
-      const t=k/9,r=t*l,arch=Math.sin(t*Math.PI)*1.1-t*t*2.3,width=Math.sin(t*Math.PI)*.68;
-      const center=new T.Vector3(Math.cos(a)*r,arch,Math.sin(a)*r),side=new T.Vector3(-Math.sin(a),0,Math.cos(a));
-      const left=center.clone().addScaledVector(side,-width),right=center.clone().addScaledVector(side,width);left.y-=width*.3;right.y-=width*.3;
-      verts.push(left.x,left.y,left.z,center.x,center.y+.06,center.z,right.x,right.y,right.z);
-      if(k<9){const n=k*3;indexes.push(n,n+3,n+1,n+1,n+3,n+4,n+1,n+4,n+2,n+2,n+4,n+5);}
-    }
-    const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(verts,3));geometry.setIndex(indexes);geometry.computeVertexNormals();
-    const material=mat(j%2?'#5e932f':'#78a944',{flatShading:false,side:T.DoubleSide});mesh(geometry,material,top.x,top.y,top.z,p);
-  }
-  for(let j=0;j<3;j++)mesh(new T.IcosahedronGeometry(.4,0),mat('#a78b4e'),top.x+Math.cos(j*2)*.5,h-.4,Math.sin(j*2)*.5,p);
-  const parts=p.children.filter((o):o is T.Mesh=>o instanceof T.Mesh);mergeParts(p,parts.filter(m=>m.material===wood),wood);mergeParts(p,parts.filter(m=>m.geometry.type==='BufferGeometry'),mat('#77a83e',{side:T.DoubleSide,flatShading:false}));mergeParts(p,parts.filter(m=>m.geometry.type==='IcosahedronGeometry'),mat('#aa8e4c'));
-  return p;
+function palm(parent:T.Object3D,x:number,z:number,h=10,seed=0){
+  const tree=createPalm(PALM_VARIANTS[Math.round(seed/.6)%PALM_VARIANTS.length],h);tree.position.set(x,0,z);tree.rotation.y=seed*.7;parent.add(tree);return tree;
 }
 function flower(p:T.Object3D,x:number,z:number,color:string){cylinder(.06,.08,.8,leaf,x,2,z,p,4);mesh(new T.IcosahedronGeometry(.35,0),mat(color),x,2.5,z,p);}
 export function boatModel(){
@@ -75,7 +58,7 @@ export function boatModel(){
   const ring=mesh(new T.TorusGeometry(.38,.105,8,24),cream,1.68,.75,1.2,p);ring.rotation.y=Math.PI/2;for(let n=0;n<4;n++){const band=mesh(new T.TorusGeometry(.38,.108,5,24,Math.PI*.2),coral,1.69,.75,1.2,p);band.rotation.set(0,Math.PI/2,n*Math.PI*.5);}
   for(let n=0;n<3;n++){const rope=mesh(new T.TorusGeometry(.3+n*.06,.027,5,24),mat('#bd9a5f'),-.85,1.1,.1,p);rope.rotation.x=-Math.PI/2;}
   const cargo=Props.crate();cargo.position.set(.85,1.05,.4);p.add(cargo);const cask=Props.barrel();cask.position.set(-.9,1.05,-.6);p.add(cask);
-  const rudder=box(.13,.8,.9,railMaterial,0,.15,3.1,p);const tiller=new T.Group();tiller.position.set(0,2.05,2.9);p.add(tiller);cylinder(.045,.055,1.8,railMaterial,0,1.15,2.9,p,10);box(.09,.09,1.35,railMaterial,0,0,-.675,tiller);const handle=new T.Object3D();handle.position.set(0,0,-1.35);tiller.add(handle);p.userData.tiller=tiller;p.userData.tillerHandle=handle;p.userData.rudder=rudder;return p;
+  const rudder=box(.13,.8,.9,railMaterial,0,.15,3.1,p);const tiller=new T.Group();tiller.position.copy(TILLER_BASE);p.add(tiller);cylinder(.045,.055,1.73,railMaterial,0,1.115,2.9,p,10);const grip=TILLER_GRIP.clone().sub(TILLER_BASE);lineBetween(new T.Vector3(),grip,.048,railMaterial,tiller);const handle=new T.Object3D();handle.position.copy(grip);tiller.add(handle);p.userData.tiller=tiller;p.userData.tillerHandle=handle;p.userData.rudder=rudder;return p;
 }
 export function characterModel(){return createExplorer();}
 export class World {
@@ -120,7 +103,7 @@ export class World {
   island(i:Island){
     const g=new T.Group();g.position.set(i.x,0,i.z);this.scene.add(g);this.landmarks.push(g);
     const surface=terrain(i);g.add(surface);this.solids.push(surface);const vegetation=biome(i);g.add(vegetation.objects);this.biomes.push({island:i,biome:vegetation});
-    for(let j=0;j<8;j++){const a=j*2.39+.5,rad=i.radius*(.42+(j%3)*.13);const x=Math.cos(a)*rad,z=Math.sin(a)*rad;if(x>8&&z>14||PICKUPS.some(p=>p.island===i.id&&Math.hypot(p.x-i.x-x,p.z-i.z-z)<2))continue;const tree=palm(g,x,z,9+(j%3)*1.5,j*.6);tree.position.y=localHeight(i,x,z);this.palms.push(tree);this.solids.push(...tree.children.filter(c=>c instanceof T.Mesh&&c.material===wood));this.landObstacles.push({x:i.x+x,z:i.z+z,r:.42});}
+    for(let j=0;j<8;j++){const a=j*2.39+.5,rad=i.radius*(.42+(j%3)*.13);const x=Math.cos(a)*rad,z=Math.sin(a)*rad;if(x>8&&z>14||PICKUPS.some(p=>p.island===i.id&&Math.hypot(p.x-i.x-x,p.z-i.z-z)<3.2))continue;const tree=palm(g,x,z,9+(j%3)*1.5,j*.6);tree.position.y=localHeight(i,x,z);this.palms.push(tree);this.solids.push(...tree.children.filter(c=>c.userData.cameraSolid));this.landObstacles.push(...palmColliders(tree));}
     g.add(flowerField(i));
     const dx=i.dock[0]-i.x,dz=i.dock[1]-i.z;for(const zz of [dz-3,dz-9.5,dz-16,dz-23])for(const xx of [-2,2])this.landObstacles.push({x:i.x+dx+xx,z:i.z+zz,r:.22});
     const jetty=Props.dock();jetty.position.set(dx,0,dz);g.add(jetty);const sign=Props.sign(i.name);sign.position.set(dx-4,1.5,dz-13);g.add(sign);this.landObstacles.push({x:i.x+dx-4,z:i.z+dz-13,r:.14});this.solidBoxes.push({x:i.x+dx-4,z:i.z+dz-13,hx:1.4,hz:.1});
@@ -142,15 +125,15 @@ export class World {
   }
   resize(){this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();this.renderer.setSize(innerWidth,innerHeight);}
   updateSail(dt:number,time:number,speed:number,heading:number,reduced:boolean){this.cloth.advance(dt,time,speed,heading,this.sky.material.uniforms.storm.value,this.lowGraphics,reduced);this.sailMesh.geometry.attributes.position.needsUpdate=true;this.sailMesh.geometry.computeVertexNormals();const flag=this.flagMesh.geometry.attributes.position;for(let vertex=0;vertex<flag.count;vertex++)flag.setZ(vertex,reduced?0:Math.sin(time*5+flag.getX(vertex)*3)*flag.getX(vertex)*.16);flag.needsUpdate=true;this.flagMesh.geometry.computeVertexNormals();}
-  setAtmosphere(seconds:number,storm:boolean){const {night,sunset}=daylightAt(seconds);this.sky.material.uniforms.night.value=night;this.sky.material.uniforms.sunset.value=sunset;this.water.uniforms.night.value=night;this.ambient.intensity=1.5-night*.55;this.ambient.color.set(night>.5?'#a6d4ef':'#d3eeff');this.sun.intensity=(3.2-night*2.2)*(storm?.55:1);this.sun.color.set(night>.5?'#c2dbf2':sunset>.1?'#ffd5a1':'#fff0cf');this.lantern.intensity=.3+night*5;for(const material of this.warmMaterials)material.emissiveIntensity=night*.8+.05;(this.stars.material as T.PointsMaterial).opacity=night*.8;(this.moon.material as T.MeshBasicMaterial).opacity=night;this.stars.position.copy(this.camera.position);this.moon.position.copy(this.camera.position).add(new T.Vector3(-210,280,-330));this.scene.fog!.color.copy(new T.Color(SKY_COLOR).lerp(new T.Color('#789aaa'),night*.7));}
+  setAtmosphere(seconds:number,storm:boolean){const {night,sunset}=daylightAt(seconds);this.sky.material.uniforms.night.value=night;this.sky.material.uniforms.sunset.value=sunset;this.water.uniforms.night.value=night;this.ambient.intensity=1.5-night*.55;this.ambient.color.set(night>.5?'#a6d4ef':'#d3eeff');this.sun.intensity=(3.2-night*2.2)*(storm?.55:1);this.sun.color.set(night>.5?'#c2dbf2':sunset>.1?'#ffd5a1':'#fff0cf');this.lantern.intensity=.3+night*5;for(const material of this.warmMaterials)material.emissiveIntensity=night*.8+.05;(this.stars.material as T.PointsMaterial).opacity=night*.8;(this.moon.material as T.MeshBasicMaterial).opacity=night;this.stars.position.copy(this.camera.position);this.moon.position.copy(this.camera.position).add(new T.Vector3(-210,280,-330));const horizon=horizonAt(night,sunset,this.sky.material.uniforms.storm.value);this.scene.fog!.color.setRGB(...horizon,T.SRGBColorSpace);(this.scene.fog as T.FogExp2).density=seaFogDensity(night);this.water.uniforms.horizon.value.set(...horizon);this.water.uniforms.fogDensity.value=seaFogDensity(night);}
   async loadNature(progress:(done:number)=>void){const assets=await loadNature(progress);for(const {island,biome:b}of this.biomes){const nature=plantNature(island,b,assets);this.scene.add(nature.group);this.natureGroups.push(nature.group);this.landObstacles.push(...nature.colliders);nature.group.traverse(object=>{if(object.userData.cameraSolid)this.solids.push(object);});}this.quality(this.lowGraphics);this.scene.updateMatrixWorld(true);}
-  quality(low:boolean){this.lowGraphics=low;for(const group of this.natureGroups)group.traverse(child=>{if(child.userData.lowDetailHide)child.visible=!low;if(child instanceof T.InstancedMesh&&child.userData.fullCount)child.count=low?child.userData.lowDensityCount:child.userData.fullCount;});this.renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:1.5));this.renderer.shadowMap.enabled=!low;this.sun.castShadow=!low;for(const {biome:b} of this.biomes)b.grass.count=low?2200:8000;this.resize();}
+  quality(low:boolean){this.lowGraphics=low;for(const group of this.natureGroups)group.traverse(child=>{if(child.userData.lowDetailHide)child.visible=!low;if(child instanceof T.InstancedMesh&&child.userData.fullCount)child.count=low?child.userData.lowDensityCount:child.userData.fullCount;});this.renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:1.5));this.renderer.shadowMap.enabled=!low;this.sun.castShadow=!low;for(const {biome:b} of this.biomes)b.grass.count=low?b.grass.userData.lowDensityCount:b.grass.userData.fullCount;this.resize();}
   render(time:number,reduced:boolean,dt=.016){
     this.lamp.update(dt,time,this.boat.rotation.z,this.boat.rotation.x,this.sky.material.uniforms.night.value,reduced);
     this.water.uniforms.time.value=reduced?0:time;for(const prop of this.floatingProps){prop.position.y=reduced?0:Math.sin(time*.9+prop.position.x)*.13;prop.rotation.z=reduced?0:Math.sin(time*.7+prop.position.z)*.04;}this.sky.dome.position.copy(this.camera.position);this.clouds.position.x=reduced?0:Math.sin(time*.012)*15;
     const rainStrength=this.sky.material.uniforms.storm.value;this.rain.visible=rainStrength>.03;(this.rain.material as T.LineBasicMaterial).opacity=rainStrength*.2;this.rain.position.copy(this.boat.position);const dropPositions=this.rain.geometry.attributes.position;for(let j=0;j<(this.lowGraphics?40:100);j++){const y=((j%20-(reduced?0:time*12))%20+20)%20;dropPositions.setY(j*2,y);dropPositions.setY(j*2+1,y-.8);}dropPositions.needsUpdate=true;this.rain.geometry.setDrawRange(0,this.lowGraphics?80:200);
     this.marker.rotation.y=time;this.marker.position.y+=reduced?0:Math.sin(time*2)*.2;
-    for(const [j,p]of this.palms.entries())p.rotation.z=reduced?0:Math.sin(time*.7+j)*.012;
+    setPalmWind(time,reduced);
     for(const island of this.landmarks)island.visible=Math.hypot(island.position.x-this.camera.position.x,island.position.z-this.camera.position.z)<300;for(const group of this.natureGroups)group.visible=Math.hypot(group.position.x-this.camera.position.x,group.position.z-this.camera.position.z)<300;
     for(const {island,biome:b}of this.biomes){const distance=Math.hypot(island.x-this.camera.position.x,island.z-this.camera.position.z);b.objects.visible=distance<750;b.grass.visible=distance<145;b.wind.value=reduced?0:time;}
     const focus=this.player.visible?this.player.position:this.boat.position;this.sun.position.set(focus.x-48,82,focus.z+55);this.sun.target.position.set(focus.x,0,focus.z);this.renderer.render(this.scene,this.camera);

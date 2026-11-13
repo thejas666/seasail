@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "tsx --test tests/*.test.ts",
-    "asset:bird": "tsx scripts/export-perched-gull.ts"
+    "asset:bird": "tsx scripts/export-perched-gull.ts",
+    "asset:coast": "tsx scripts/export-coastal-assets.ts"
   },
   "dependencies": {
     "three": "^0.180.0"

@@ -14,7 +14,7 @@ export class BirdBehavior {
   range(min:number,max:number){return min+this.random()*(max-min);}
   coast(b:BirdMotion,boat:T.Group){const island=MAP.islands.reduce((best,i)=>Math.hypot(i.x-boat.position.x,i.z-boat.position.z)<Math.hypot(best.x-boat.position.x,best.z-boat.position.z)?i:best);b.home.set(island.x,0,island.z);b.homeRadius=island.radius;}
   waypoint(b:BirdMotion,awayFrom?:T.Vector3){
-    const angle=this.range(0,Math.PI*2),radius=b.homeRadius+this.range(25,115);b.target.set(b.home.x+Math.cos(angle)*radius,this.range(8,22),b.home.z+Math.sin(angle)*radius);
+    const angle=this.range(0,Math.PI*2),radius=b.homeRadius+this.range(20,85);b.target.set(b.home.x+Math.cos(angle)*radius,this.range(8,22),b.home.z+Math.sin(angle)*radius);
     if(awayFrom){const outward=b.position.clone().sub(awayFrom);outward.y=0;if(outward.lengthSq()<1)outward.set(Math.cos(angle),0,Math.sin(angle));outward.normalize();b.target.copy(b.position).addScaledVector(outward,this.range(65,130));b.target.y=this.range(10,20);}
     b.waypointAt=this.elapsed+this.range(12,26);
   }
@@ -41,7 +41,7 @@ export class BirdBehavior {
     if((b.mode==='roaming'||b.mode==='approaching'&&distance>14)&&Math.hypot(b.position.x-b.home.x,b.position.z-b.home.z)<b.homeRadius+8)desired.y=Math.max(desired.y,(21-b.position.y)*1.2);
     b.velocity.lerp(desired,1-Math.exp(-dt*(b.mode==='approaching'?2.2:.8)));b.position.addScaledVector(b.velocity,dt);
   }
-  update(dt:number,boat:T.Group,speed:number,storm:number,active=9){
+  update(dt:number,boat:T.Group,speed:number,storm:number,active=this.birds.length){
     dt=Math.min(.2,Math.max(0,dt));if(!this.initialized)this.initialize(boat);this.elapsed+=dt;boat.updateMatrixWorld(true);this.idle=Math.abs(speed)<.8&&storm<.2?this.idle+dt:0;
     if(this.elapsed>=this.nextEncounter)this.encounter(boat,speed,storm,active);
     for(const b of this.birds){

@@ -11,7 +11,7 @@ test('rendered ground and explorer height agree at every pickup and jetty',()=>{
   for(const i of MAP.islands){assert.equal(groundHeight(i,i.dock[0],i.dock[1]-12),1.5);assert.ok(localHeight(i,0,0)>localHeight(i,0,i.radius*.9));}
 });
 test('vegetation is deterministic, fits its instance buffers, and leaves required pickups accessible',()=>{
-  for(const i of MAP.islands){const b=biome(i);assert.ok(b.grass.count>6500&&b.grass.count<=b.grass.instanceMatrix.count);for(const object of b.objects.children){if('count'in object&&'instanceMatrix'in object)assert.ok(Number(object.count)<=Number((object.instanceMatrix as {count:number}).count));}
+  for(const i of MAP.islands){const b=biome(i);assert.ok(b.grass.count>1000&&b.grass.count<=b.grass.instanceMatrix.count);for(const object of b.objects.children){if('count'in object&&'instanceMatrix'in object)assert.ok(Number(object.count)<=Number((object.instanceMatrix as {count:number}).count));}
     const nature=plantNature(i,b,{rock:new Group()});assert.ok(nature.group.children.length>5);
     for(const p of PICKUPS.filter(p=>p.island===i.id))assert.ok(!nature.colliders.some(o=>Math.hypot(o.x-p.x,o.z-p.z)<o.r+.35),`${p.id} is accessible`);
     const bounds=new Box3().setFromObject(nature.group).getSize(new Vector3());assert.ok(bounds.y>5&&bounds.y<25);
