@@ -1,4 +1,4 @@
 import {defineConfig} from 'vite';
 export default defineConfig({
-  build:{rollupOptions:{output:{manualChunks:{three:['three']}}}},
+  build:{rollupOptions:{input:{game:'index.html',birdStudy:'bird-study.html'},output:{manualChunks:{three:['three']}}}},
 });
