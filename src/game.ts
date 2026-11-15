@@ -21,7 +21,7 @@ export class Game {
   ui:UI;world:World;state:GameState;audio=new OceanAudio();playing=false;aboard=true;firstPerson=false;
   pos=new T.Vector3();boatPos=new T.Vector3();heading=0;speed=0;cameraYaw=.5;pitch=.16;distance=16;keys=new Set<string>();
   fishing:Fishing|null=null;nearPickup:string|null=null;nearDock:Island|null=null;interaction='';time=0;last=0;hudAt=0;saveAt=0;hitAt=0;gateAt=0;squall=0;saveWarned=false;mutedVolume=.35;
-  turnRate=0;anchored=false;heave=0;heaveVelocity=0;jumpHeight=0;jumpVelocity=0;walkVelocity=new T.Vector3();cameraRay=new T.Raycaster();
+  turnRate=0;anchored=false;heave=0;heaveVelocity=0;jumpHeight=0;jumpVelocity=0;support=0;walkVelocity=new T.Vector3();cameraRay=new T.Raycaster();
   animator:ExplorerAnimator;pickupApproach:string|null=null;pendingPickup:string|null=null;approachAge=0;actualWalkSpeed=0;fishingTarget=new T.Vector3();
   constructor(root:HTMLElement){
     const saved=loadState();this.state=saved.state??freshState();this.state.settings=readSettings(this.state.settings);this.ui=new UI(root,!!saved.state,saved.error);this.world=new World(this.ui.el('world'));this.animator=new ExplorerAnimator(this.world.player.userData.rig as ExplorerRig,this.world.scene);this.placeAtDock();this.world.quality(this.state.settings.lowGraphics);this.ui.onAction=(action,value)=>this.action(action,value);this.bind();this.syncPickups();this.ui.update(this.state,this.pos.x,this.pos.z,this.heading,this.aboard);
@@ -82,7 +82,7 @@ export class Game {
       if(e.repeat)return;const k=e.key.toLowerCase();if(k==='escape'){if(this.ui.panel)this.panel(null);else if(this.playing){if(this.fishing)this.cancelFishing();else this.panel('pause');}return;}
       if(k==='tab'){if(this.playing)this.action('journal');return;}if(k==='m'){this.action('map');return;}if(this.ui.panel||!this.playing)return;
       if(k==='v'){this.action('camera');return;}if(k==='e'){this.interact();return;}if(k==='f'){this.fish();return;}if(k===' '&&this.fishing){this.fish();return;}
-      if(k==='x'){this.action('anchor');return;}if(k===' '&&!this.aboard&&!this.animator.busy&&!this.pickupApproach&&this.jumpHeight===0){this.jumpVelocity=4.6;this.jumpHeight=.01;return;}
+      if(k==='x'){this.action('anchor');return;}if(k===' '&&!this.aboard&&!this.animator.busy&&!this.pickupApproach&&this.jumpVelocity===0&&this.jumpHeight<.06){this.jumpVelocity=4.6;this.jumpHeight=Math.max(this.jumpHeight,.01);return;}
       const hotkeys:Record<string,[string,string?]>={'1':['interact'],'2':['fish'],'3':['eat','fruit'],'4':['repair'],'5':['journal'],'6':['map'],'7':['anchor'],'8':['camera']};if(hotkeys[k]){this.action(...hotkeys[k]);return;}
       this.keys.add(k);
     });
@@ -115,7 +115,7 @@ export class Game {
     if(this.nearDock){
       this.cancelFishing(false);const i=this.nearDock;
       if(this.aboard){
-        this.boatPos.set(i.dock[0],0,i.dock[1]);this.speed=0;this.aboard=false;this.distance=2.1;this.cameraYaw=.08;this.pitch=.12;this.pos.set(i.dock[0],0,i.dock[1]-12);this.state.lastDock=i.id;
+        this.boatPos.set(i.dock[0],0,i.dock[1]);this.speed=0;this.aboard=false;this.distance=2.1;this.cameraYaw=.08;this.pitch=.12;this.pos.set(i.dock[0],0,i.dock[1]-12);this.support=groundHeight(i,this.pos.x,this.pos.z);this.jumpHeight=this.jumpVelocity=0;this.state.lastDock=i.id;
         if(!this.state.visited.includes(i.id)){this.state.visited.push(i.id);this.ui.toast(`${i.name}. ${i.subtitle}`);}else this.ui.toast('A little time ashore. WASD to explore, E to gather.');
         if(!this.state.discovered.includes(i.id))this.state.discovered.push(i.id);
         if(i.id==='harbor'&&!this.state.completed&&this.state.chart&&this.state.reinforced){this.state.completed=true;this.persist();this.panel('complete');}
@@ -161,10 +161,14 @@ export class Game {
       if(direction.lengthSq()>0)direction.normalize().multiplyScalar(this.pickupApproach?2.7:this.state.nourishment>0?(this.keys.has('shift')?3.2:2.1):1.6);
       this.walkVelocity.lerp(direction,1-Math.exp(-dt*10));
       const next=this.pos.clone().addScaledVector(this.walkVelocity,dt),i=MAP.islands.find(i=>i.id===this.state.lastDock)!;
-      const valid=(x:number,z:number)=>walkable(x,z,i)&&!blockedAt(x,z,this.world.landObstacles,this.world.solidBoxes);
+      // Rocks and ruin blocks are walls until your feet are within a step of their top; then you can stand on them.
+      const feet=this.support+this.jumpHeight,step=feet+.35;
+      const valid=(x:number,z:number)=>walkable(x,z,i)&&(!blockedAt(x,z,this.world.landObstacles,this.world.solidBoxes)||this.world.platformTop(x,z,step)!==null);
       const previous=this.pos.clone();if(valid(next.x,next.z))this.pos.copy(next);else if(valid(next.x,this.pos.z))this.pos.x=next.x;else if(valid(this.pos.x,next.z))this.pos.z=next.z;else this.walkVelocity.set(0,0,0);this.actualWalkSpeed=this.pos.distanceTo(previous)/Math.max(dt,.001);
       if(this.walkVelocity.lengthSq()>.05){const target=Math.atan2(this.walkVelocity.x,this.walkVelocity.z),delta=Math.atan2(Math.sin(target-this.world.player.rotation.y),Math.cos(target-this.world.player.rotation.y));this.world.player.rotation.y+=delta*(1-Math.exp(-dt*12));}
-      const jump=advanceJump(this.jumpHeight,this.jumpVelocity,dt);this.jumpHeight=jump.height;this.jumpVelocity=jump.velocity;
+      const ground=groundHeight(i,this.pos.x,this.pos.z),top=this.world.platformTop(this.pos.x,this.pos.z,step),support=top!==null&&top>ground?top:ground;
+      let height=Math.max(0,feet-support);if(this.jumpVelocity!==0||height>.04){const jump=advanceJump(height,this.jumpVelocity,dt);height=jump.height;this.jumpVelocity=jump.velocity;}else height=0;
+      this.support=support;this.jumpHeight=height;
     }
   }
   simulation(dt:number){
@@ -179,12 +183,12 @@ export class Game {
   camera(dt:number){
     const camera=this.world.camera;
     if(!this.playing){const orbit=this.state.settings.reducedMotion?0:Math.sin(this.time*.025)*.07;camera.position.set(62+Math.sin(orbit)*18,17,76+Math.cos(orbit)*3);camera.lookAt(-12,6,0);return;}
-    const p=this.pos.clone();const island=this.closestIsland();const ground=groundHeight(island,this.pos.x,this.pos.z);p.y=this.aboard?3.2+(this.state.settings.reducedMotion?0:this.heave):ground+this.jumpHeight+(this.firstPerson?1.8:1.5);if(this.firstPerson&&this.aboard)p.copy(this.world.boat.localToWorld(HELM_EYE.clone()));
+    const p=this.pos.clone();const island=this.closestIsland();const ground=groundHeight(island,this.pos.x,this.pos.z);p.y=this.aboard?3.2+(this.state.settings.reducedMotion?0:this.heave):(this.aboard?ground:this.support)+this.jumpHeight+(this.firstPerson?1.8:1.5);if(this.firstPerson&&this.aboard)p.copy(this.world.boat.localToWorld(HELM_EYE.clone()));
     if(this.firstPerson){camera.position.copy(p);const look=new T.Vector3(-Math.sin(this.cameraYaw)*Math.cos(this.pitch),-Math.sin(this.pitch),-Math.cos(this.cameraYaw)*Math.cos(this.pitch));camera.lookAt(p.clone().add(look));}
     else{const d=this.distance;const desired=p.clone().add(new T.Vector3(Math.sin(this.cameraYaw)*d*Math.cos(this.pitch),d*Math.sin(this.pitch)+(this.aboard?2.5:.45),Math.cos(this.cameraYaw)*d*Math.cos(this.pitch)));desired.y=Math.max(.65,desired.y);const ray=desired.clone().sub(p).normalize();this.cameraRay.set(p,ray);this.cameraRay.far=desired.distanceTo(p);const obstruction=this.cameraRay.intersectObjects(this.world.solids,true)[0];if(obstruction&&obstruction.distance>.6)desired.copy(obstruction.point).addScaledVector(ray,-.6);camera.position.lerp(desired,this.state.settings.reducedMotion?1:1-Math.exp(-dt*6));camera.lookAt(p);}
   }
   visuals(dt:number){
-    const w=this.world,red=this.state.settings.reducedMotion;w.boat.position.copy(this.boatPos);const pose=waterPose(this.boatPos.x,this.boatPos.z,this.heading,this.time);const heave=spring(this.heave,this.heaveVelocity,pose.height,dt);this.heave=heave.value;this.heaveVelocity=heave.velocity;w.boat.position.y=red?0:this.heave;w.boat.rotation.set(red?0:pose.pitch*.7,this.heading,red?0:pose.roll*.7-this.turnRate*this.speed*.018);w.boat.visible=true;const groundIsland=this.closestIsland();const feetHeight=groundHeight(groundIsland,this.pos.x,this.pos.z);w.player.position.set(this.pos.x,this.aboard?1.15+(red?0:this.heave):feetHeight+this.jumpHeight,this.pos.z);if(this.aboard){w.boat.updateMatrixWorld(true);w.player.position.copy(w.boat.localToWorld(HELM_STANCE.clone()));if(!this.fishing)w.player.rotation.y=this.heading+Math.PI;w.player.quaternion.copy(w.boat.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI));}else{w.player.rotation.x=0;w.player.rotation.z=0;}w.player.visible=this.playing;if(!this.playing)w.boat.position.set(MAP.islands[0].dock[0],w.boat.position.y,MAP.islands[0].dock[1]);w.wake.position.set(this.boatPos.x,.09,this.boatPos.z);w.wake.rotation.z=this.heading;w.wake.visible=this.aboard&&Math.abs(this.speed)>.3;w.wake.scale.set(1+(Math.sin(this.time*2)*.05),1.4+Math.abs(this.speed)*.13,1);
+    const w=this.world,red=this.state.settings.reducedMotion;w.boat.position.copy(this.boatPos);const pose=waterPose(this.boatPos.x,this.boatPos.z,this.heading,this.time);const heave=spring(this.heave,this.heaveVelocity,pose.height,dt);this.heave=heave.value;this.heaveVelocity=heave.velocity;w.boat.position.y=red?0:this.heave;w.boat.rotation.set(red?0:pose.pitch*.7,this.heading,red?0:pose.roll*.7-this.turnRate*this.speed*.018);w.boat.visible=true;w.player.position.set(this.pos.x,this.aboard?1.15+(red?0:this.heave):this.support+this.jumpHeight,this.pos.z);if(this.aboard){w.boat.updateMatrixWorld(true);w.player.position.copy(w.boat.localToWorld(HELM_STANCE.clone()));if(!this.fishing)w.player.rotation.y=this.heading+Math.PI;w.player.quaternion.copy(w.boat.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI));}else{w.player.rotation.x=0;w.player.rotation.z=0;}w.player.visible=this.playing;if(!this.playing)w.boat.position.set(MAP.islands[0].dock[0],w.boat.position.y,MAP.islands[0].dock[1]);w.wake.position.set(this.boatPos.x,.09,this.boatPos.z);w.wake.rotation.z=this.heading;w.wake.visible=this.aboard&&Math.abs(this.speed)>.3;w.wake.scale.set(1+(Math.sin(this.time*2)*.05),1.4+Math.abs(this.speed)*.13,1);
     const o=objective(this.state),i=MAP.islands.find(i=>i.id===o.island)!;w.marker.position.set(i.dock[0],6,i.dock[1]-12);w.marker.visible=this.playing&&this.pos.distanceTo(w.marker.position)<120;
     this.camera(dt);
     if(this.fishing){const delta=this.fishingTarget.clone().sub(w.player.position);const target=Math.atan2(delta.x,delta.z);w.player.rotation.y+=Math.atan2(Math.sin(target-w.player.rotation.y),Math.cos(target-w.player.rotation.y))*(1-Math.exp(-dt*10));}

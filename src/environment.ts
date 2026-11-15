@@ -1,3 +1,4 @@
+import {animeBoulderGeometry,animeSpireGeometry,animeStoneMaterial} from './anime-rocks';
 import * as T from 'three';
 import {PICKUPS,type Island} from './data';
 import {ART_STYLE} from './art-style';
@@ -22,7 +23,10 @@ export function localHeight(i:Island,x:number,z:number) {
   // the jetty, and a level knoll beside the path where the ruins stand.
   if(ANIME){
     const c=cliffSide(x,z),high=1-smooth(.62+.3*c,.88+.075*c,d),knoll=Math.exp(-((x-i.radius*.3)**2+(z+i.radius*.12)**2)/(i.radius*i.radius*.05));
-    return beach+high*(1.5+smooth(0,.72,hill)*6.6+smooth(0,.8,knoll)*2.5+Math.sin(x*.19)*Math.cos(z*.16)*.5);
+    // Palm Island: the back of the island is a level plateau that runs right to the cliff edge, so the
+    // ground stays high until it drops away at the sea cliff instead of sloping down toward it.
+    const plateau=i.id==='palm'?smooth(.12,.5,(x*-.6+z*-.8)/i.radius):0,top=Math.max(smooth(0,.72,hill),plateau);
+    return beach+high*(1.5+top*6.6+smooth(0,.8,knoll)*2.5+Math.sin(x*.19)*Math.cos(z*.16)*(.5-plateau*.3));
   }
   return beach+inland*(1.5+hill*4.5+Math.sin(x*.19)*Math.cos(z*.16)*.45);
 }
@@ -129,13 +133,13 @@ export function biome(i:Island):Biome{
   const grassGeometry=grassTuftGeometry(3);const patches=flowerPatches(i);const obstacles:{x:number;z:number;r:number}[]=[];
   const area=T.MathUtils.clamp((i.radius/33)**2,.6,2),fieldCount=ANIME?Math.round(ANIME_GRASS_COUNT*area):GRASS_FIELD_COUNT;
   if(ANIME){
-    // Clusters of blue faceted boulders around the meadow, kept off the path, pickups and landmarks.
+    // Clusters of boulders around the meadow (carved stone on Palm Island, blue faceted elsewhere), kept off the path, pickups and landmarks.
     const rocks=new T.Group(),rockRandom=rand(i.id.length*977+i.radius);
     for(let attempt=0,placed=0;attempt<400&&placed<Math.round(9*area);attempt++){
       const a=rockRandom()*Math.PI*2,d=.34+rockRandom()*.38,x=Math.cos(a)*i.radius*d,z=Math.sin(a)*i.radius*d,size=1+rockRandom()*1.3;
       if(pathDistance(i,x,z)<4+size||Math.hypot(x-i.radius*.3,z+i.radius*.12)<8||slopeAt(i,x,z)>.6||Math.hypot(x+6,z+5)<5||Math.hypot(x+12,z+12)<9||Math.hypot(x,z+8)<8||x>4&&z>10||PICKUPS.some(p=>p.island===i.id&&Math.hypot(p.x-i.x-x,p.z-i.z-z)<4.5+size)||patches.some(p=>Math.hypot(x-p.x,z-p.z)<p.r+size+1)||obstacles.some(o=>Math.hypot(x-o.x,z-o.z)<o.r+size+3))continue;
       placed++;obstacles.push({x,z,r:size*.95});
-      for(let k=0;k<3;k++){const s=k?size*(.35+rockRandom()*.3):size,ox=k?Math.cos(a+k*2.3)*size*1.15:0,oz=k?Math.sin(a+k*2.3)*size*1.15:0,rock=new T.Mesh(animeRockGeometry((placed*3+k)%6),animeRockMaterial());rock.position.set(x+ox,localHeight(i,x+ox,z+oz)-.05*s,z+oz);rock.scale.set(s,s*(.75+rockRandom()*.35),s);rock.rotation.y=rockRandom()*6.28;rock.castShadow=rock.receiveShadow=true;rock.userData.cameraSolid=!k;rocks.add(rock);if(k)obstacles.push({x:x+ox,z:z+oz,r:s*.9});}
+      for(let k=0;k<3;k++){const s=k?size*(.35+rockRandom()*.3):size,ox=k?Math.cos(a+k*2.3)*size*1.15:0,oz=k?Math.sin(a+k*2.3)*size*1.15:0,carved=i.id==='palm',rock=carved?new T.Mesh(animeBoulderGeometry((placed*3+k)%6),animeStoneMaterial()):new T.Mesh(animeRockGeometry((placed*3+k)%6),animeRockMaterial());rock.position.set(x+ox,localHeight(i,x+ox,z+oz)-(carved?.12:.05)*s,z+oz);if(carved)rock.scale.set(s*.85,s*(.8+rockRandom()*.3),s*.85);else rock.scale.set(s,s*(.75+rockRandom()*.35),s);rock.rotation.y=rockRandom()*6.28;rock.castShadow=rock.receiveShadow=true;rock.userData.cameraSolid=!k;rocks.add(rock);if(k)obstacles.push({x:x+ox,z:z+oz,r:s*.9});}
     }
     objects.add(rocks);
   }
@@ -162,7 +166,12 @@ export function biome(i:Island):Biome{
 }
 
 export function sky(){
-  const material=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{storm:{value:0},night:{value:0},sunset:{value:0},anime:{value:0},sunDir:{value:new T.Vector3(-.4,.7,.5)},haze:{value:new T.Vector3(.667,.796,.816)}},vertexShader:'varying vec3 vDirection;void main(){vDirection=position;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.);}',fragmentShader:`varying vec3 vDirection;uniform float storm;uniform float night;uniform float sunset;uniform float anime;uniform vec3 sunDir;uniform vec3 haze;void main(){vec3 d=normalize(vDirection);float h=max(d.y,0.);vec3 c=mix(vec3(.56,.82,.91),vec3(.025,.38,.66),pow(h,.42));vec3 a=mix(vec3(.99,.87,.62),vec3(.52,.79,.96),smoothstep(0.,.28,h));a=mix(a,vec3(.1,.38,.86),smoothstep(.22,1.,h));c=mix(c,a,anime);float sunDot=max(dot(d,normalize(sunDir)),0.);float sun=pow(sunDot,130.);c+=(vec3(1.,.86,.55)*pow(sunDot,22.)*.16+vec3(1.,.9,.7)*pow(sunDot,600.)*.25+vec3(1.,.97,.86)*smoothstep(.9984,.9991,sunDot)*.7)*anime*(1.-night)*(1.-storm);c+=vec3(1.,.85,.55)*sun*.55;c=mix(c,haze,exp(-h*22.)*.94);c=mix(c,vec3(.39,.49,.54),storm*.72);c=mix(c,mix(vec3(.08,.18,.27),vec3(.02,.045,.11),anime)+h*.035,night*mix(.86,.97,anime));c=mix(c,vec3(.86,.57,.34),sunset*exp(-h*9.)*.45);gl_FragColor=vec4(c,1.);}`});
+  const material=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{storm:{value:0},night:{value:0},sunset:{value:0},anime:{value:0},sunDir:{value:new T.Vector3(-.4,.7,.5)},haze:{value:new T.Vector3(.667,.796,.816)}},vertexShader:'varying vec3 vDirection;void main(){vDirection=position;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.);}',fragmentShader:`varying vec3 vDirection;uniform float storm;uniform float night;uniform float sunset;uniform float anime;uniform vec3 sunDir;uniform vec3 haze;void main(){vec3 d=normalize(vDirection);float h=max(d.y,0.);vec3 c=mix(vec3(.56,.82,.91),vec3(.025,.38,.66),pow(h,.42));vec3 a=mix(vec3(.99,.87,.62),vec3(.52,.79,.96),smoothstep(0.,.28,h));a=mix(a,vec3(.1,.38,.86),smoothstep(.22,1.,h));c=mix(c,a,anime);float sunDot=max(dot(d,normalize(sunDir)),0.);float sun=pow(sunDot,130.);c+=(vec3(1.,.86,.55)*pow(sunDot,22.)*.16+vec3(1.,.9,.7)*pow(sunDot,600.)*.25+vec3(1.,.97,.86)*smoothstep(.9984,.9991,sunDot)*.7)*anime*(1.-night)*(1.-storm);c+=vec3(1.,.85,.55)*sun*.55;c=mix(c,haze,exp(-h*22.)*.94);c=mix(c,vec3(.39,.49,.54),storm*.72);vec3 nightSky=mix(vec3(.08,.18,.27)+h*.035,mix(vec3(.13,.25,.5),vec3(.025,.07,.22),pow(h,.55)),anime);c=mix(c,nightSky,night*mix(.86,.96,anime));
+  c=mix(c,vec3(.86,.57,.34),sunset*exp(-h*9.)*.45*(1.-anime));
+  // Golden hour (anime): the whole sky warms, gold low down and around the sun, peach and soft violet overhead.
+  vec3 gold=mix(vec3(1.,.74,.36),vec3(1.,.6,.5),smoothstep(.05,.35,h));gold=mix(gold,vec3(.58,.52,.78),smoothstep(.35,1.,h));gold+=vec3(1.,.8,.45)*pow(sunDot,5.)*.45+vec3(1.,.93,.7)*pow(sunDot,60.)*.6;
+  c=mix(c,gold,sunset*.82*anime*(1.-night));
+  gl_FragColor=vec4(c,1.);}`});
   const dome=new T.Mesh(new T.SphereGeometry(1450,24,16),material);dome.frustumCulled=false;return {dome,material};
 }
 function cartoonClouds(){
@@ -178,19 +187,25 @@ function cartoonClouds(){
 }
 /** Anime style: tall cumulus with flat bases and stacked crowns, lilac beneath and warm where the sun catches them. */
 function animeClouds(){
-  const glow={value:1},random=rand(911),g=new T.Group(),geometry=new T.IcosahedronGeometry(1,3),material=new T.MeshStandardMaterial({color:'#ffffff',roughness:1,fog:false});
-  g.userData.glow=glow;
-  material.onBeforeCompile=shader=>{shader.uniforms.uGlow=glow;shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying float vUp;').replace('#include <beginnormal_vertex>','#include <beginnormal_vertex>\n  vUp=normalize(mat3(instanceMatrix)*normal).y;');
-    shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying float vUp;uniform float uGlow;').replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=mix(vec3(.5,.47,.72),vec3(1.,.83,.66),smoothstep(-.6,.7,vUp))*.5*uGlow;');};
+  // Big fair-weather cumulus: sunlit tops, soft blue-grey undersides and a bright rim toward the sun. The world
+  // sets the lit and shadow colours through the day (white and blue by day, peach and rose at sunset, blue at night).
+  const random=rand(911),g=new T.Group(),geometry=new T.IcosahedronGeometry(1,3);
+  const uniforms={lit:{value:new T.Color('#ffffff')},shade:{value:new T.Color('#a8bde3')},sunDir:{value:new T.Vector3(-.52,.3,.66).normalize()}};
+  const material=new T.ShaderMaterial({uniforms,vertexShader:`varying vec3 vNormal;varying vec3 vWorld;void main(){vec4 w=modelMatrix*instanceMatrix*vec4(position,1.);vWorld=w.xyz;vNormal=normalize(mat3(modelMatrix)*mat3(instanceMatrix)*normal);gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader:`uniform vec3 lit;uniform vec3 shade;uniform vec3 sunDir;varying vec3 vNormal;varying vec3 vWorld;void main(){vec3 n=normalize(vNormal),v=normalize(cameraPosition-vWorld);
+      float light=clamp(dot(n,normalize(sunDir))*.45+.45+n.y*.35,0.,1.);vec3 c=mix(shade,lit,smoothstep(.05,.95,light));
+      float rim=pow(1.-max(dot(n,v),0.),3.);c+=lit*rim*.35*smoothstep(-.2,.6,dot(-v,normalize(sunDir))+.4);gl_FragColor=vec4(c,1.);}`});
+  g.userData.cloud=uniforms;g.userData.glow={value:1};
   const puffs:number[][]=[];
   const cloud=(cx:number,cy:number,cz:number,size:number,facing:number)=>{
-    const ux=-Math.sin(facing),uz=Math.cos(facing),count=7+Math.floor(random()*5);
-    for(let k=0;k<count;k++){const t=count>1?k/(count-1)*2-1:0,crown=1-t*t,w=size*(.34+.3*crown+random()*.12),h=w*(.62+.28*crown);puffs.push([cx+ux*t*size*1.25+(random()-.5)*size*.2,cy+h*.55,cz+uz*t*size*1.25+(random()-.5)*size*.3,w,h,w*.8]);}
-    for(let k=0;k<3;k++){const t=(random()-.5)*.9,w=size*(.3+random()*.14);puffs.push([cx+ux*t*size,cy+size*(.5+random()*.3),cz+uz*t*size,w,w*.85,w*.8]);}
+    const ux=-Math.sin(facing),uz=Math.cos(facing),count=11+Math.floor(random()*6);
+    // A flat-bottomed base of overlapping puffs, then billowing crowns that pile up toward the middle.
+    for(let k=0;k<count;k++){const t=count>1?k/(count-1)*2-1:0,crown=1-t*t,w=size*(.3+.28*crown+random()*.12),h=w*(.6+.25*crown);puffs.push([cx+ux*t*size*1.3+(random()-.5)*size*.25,cy+h*.5,cz+uz*t*size*1.3+(random()-.5)*size*.35,w,h,w*.85]);}
+    for(let k=0;k<6;k++){const t=(random()-.5)*1.1,lift=1-Math.abs(t),w=size*(.26+random()*.16+lift*.12);puffs.push([cx+ux*t*size+(random()-.5)*size*.2,cy+size*(.45+lift*.5+random()*.2),cz+uz*t*size+(random()-.5)*size*.25,w,w*.9,w*.85]);}
   };
-  // A scatter of fair-weather clouds overhead, and a wall of big towers low on the horizon.
-  for(let j=0;j<20;j++){const a=j/20*Math.PI*2+random()*.5,d=320+random()*480;cloud(Math.cos(a)*d,150+random()*90,Math.sin(a)*d,15+random()*13,a);}
-  for(let j=0;j<18;j++){const a=j/18*Math.PI*2+random()*.3,d=980+random()*240;cloud(Math.cos(a)*d,28+random()*60,Math.sin(a)*d,38+random()*34,a);}
+  // Clouds scattered across the sky, and a wall of big towers low on the horizon.
+  for(let j=0;j<26;j++){const a=j/26*Math.PI*2+random()*.5,d=300+random()*520;cloud(Math.cos(a)*d,140+random()*110,Math.sin(a)*d,17+random()*16,a);}
+  for(let j=0;j<20;j++){const a=j/20*Math.PI*2+random()*.3,d=960+random()*240;cloud(Math.cos(a)*d,24+random()*60,Math.sin(a)*d,40+random()*38,a);}
   const instances=new T.InstancedMesh(geometry,material,puffs.length),dummy=new T.Object3D();
   puffs.forEach(([x,y,z,sx,sy,sz],n)=>{dummy.position.set(x,y,z);dummy.scale.set(sx,sy,sz);dummy.rotation.set(0,random()*6.28,0);dummy.updateMatrix();instances.setMatrixAt(n,dummy.matrix);});
   instances.frustumCulled=false;g.add(instances);return g;
@@ -216,6 +231,9 @@ export function ocean(){
   return new T.ShaderMaterial({uniforms:{time:{value:0},night:{value:0},horizon:{value:new T.Vector3(.667,.796,.816)},fogDensity:{value:.0075},anime:{value:0},sunDir:{value:new T.Vector3(-.4,.7,.5)},islands:{value:[] as T.Vector3[]}},vertexShader:`varying vec3 vWorld;varying float vHeight;uniform float time;void main(){vec3 p=position;vec4 w=modelMatrix*vec4(p,1.);w.y+=sin(w.x*.09+time*.8)*.17+cos(w.z*.065+time*.65)*.18+sin(w.x*.26-w.z*.18+time*1.4)*.055;vWorld=w.xyz;vHeight=w.y;gl_Position=projectionMatrix*viewMatrix*w;}`,fragmentShader:`varying vec3 vWorld;varying float vHeight;uniform float time;uniform float night;uniform vec3 horizon;uniform float fogDensity;uniform float anime;uniform vec3 sunDir;uniform vec3 islands[5];
 float hash21(vec2 q){return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453);}
 float vnoise(vec2 q){vec2 i=floor(q),f=fract(q);f=f*f*(3.-2.*f);return mix(mix(hash21(i),hash21(i+vec2(1.,0.)),f.x),mix(hash21(i+vec2(0.,1.)),hash21(i+vec2(1.,1.)),f.x),f.y);}
+vec2 hash22(vec2 q){return fract(sin(vec2(dot(q,vec2(127.1,311.7)),dot(q,vec2(269.5,183.3))))*43758.5453);}
+// Distance between the two nearest moving cell centres: small along cell borders, which draws the light web.
+float web(vec2 q,float t){vec2 i=floor(q),f=fract(q);float d1=8.,d2=8.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y)),o=hash22(i+g);o=.5+.42*sin(t+6.2831*o);float d=length(g+o-f);if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d;}return d2-d1;}
 float ripple(vec2 q,float t){return vnoise(q*.55+vec2(t*.35,t*.12))*.6+vnoise(q*1.3-vec2(t*.3,-t*.42))*.3+vnoise(q*3.1+vec2(-t*.5,t*.6))*.1;}
 void main(){float shore=1000.;for(int i=0;i<5;i++){shore=min(shore,length(vWorld.xz-islands[i].xy)-islands[i].z);}vec2 p=vWorld.xz;float n=sin(p.x*.16+time*.8)*cos(p.y*.19-time*.6)+sin(p.x*.41+p.y*.3+time)*.25;vec3 deep=mix(vec3(.045,.43,.68),vec3(.03,.27,.6),anime),shallow=mix(vec3(.12,.66,.78),vec3(.1,.74,.82),anime);vec3 c=mix(shallow,deep,smoothstep(0.,60.,shore));c+=n*.025;float caustic=pow(1.-abs(sin(p.x*.32+cos(p.y*.21+time*.2))*cos(p.y*.36+sin(p.x*.17-time*.2))),16.);c+=vec3(.16,.18,.16)*caustic*(1.-smoothstep(0.,50.,shore))*mix(1.,.4,anime);vec3 viewDir=normalize(cameraPosition-vWorld);float fresnel=pow(1.-max(viewDir.y,0.),4.);c=mix(c,vec3(.35,.68,.79),fresnel*.6);float glint=pow(max(sin(p.x*1.4+p.y*.6+time)*sin(p.y*1.7-time*.9),0.),30.);c+=vec3(.7,.85,.81)*glint*.12;vec3 refl=reflect(-viewDir,vec3(0.,1.,0.));float path=pow(max(dot(refl,normalize(sunDir)),0.),18.);vec2 cell=floor(vec2(p.x*.9+p.y*.35,p.y*2.2)+vec2(time*.3,0.));float rnd=fract(sin(dot(cell,vec2(127.1,311.7)))*43758.5453);float sparkle=step(.8,fract(rnd+time*.3*(.4+rnd)));float path2=pow(max(dot(refl,normalize(sunDir)),0.),60.);c+=vec3(1.,.92,.68)*(path*.22+path2*sparkle*1.5)*anime*(1.-night);
 // Anime style surface detail: moving ripples that tilt the surface, so it catches sky reflection, facet
@@ -224,7 +242,11 @@ if(anime>.5){
   float dist=length(cameraPosition-vWorld),near=exp(-dist*.006);
   float h0=ripple(p,time),hx=ripple(p+vec2(.35,0.),time),hz=ripple(p+vec2(0.,.35),time);
   vec3 N=normalize(vec3((h0-hx)*1.7*near,1.,(h0-hz)*1.7*near)),S=normalize(sunDir);
-  c=mix(vec3(.42,.9,.86),c,smoothstep(-1.,9.,shore));
+  // Clear water bands: pale aqua at the waterline, turquoise shallows over a sandy floor, rich blue offshore.
+  vec3 base=mix(vec3(.6,.93,.93),vec3(.27,.8,.88),smoothstep(-1.,6.,shore));
+  base=mix(base,vec3(.12,.56,.9),smoothstep(6.,30.,shore));base=mix(base,vec3(.06,.32,.78),smoothstep(30.,95.,shore));
+  float bed=vnoise(p*.11)*.6+vnoise(p*.37)*.4;base*=1.+(bed-.5)*.2*(1.-smoothstep(3.,28.,shore));
+  c=base+n*.018;
   c*=1.+clamp((dot(N,S)-S.y)*1.3,-.16,.22);
   vec3 R=reflect(-viewDir,N);float fr=pow(1.-max(dot(viewDir,N),0.),5.);
   c=mix(c,mix(horizon,vec3(.22,.52,.92),smoothstep(0.,.45,R.y)),fr*.6*(1.-night*.7));
@@ -233,6 +255,14 @@ if(anime>.5){
   float lines=smoothstep(.972,.992,ridge)*smoothstep(.4,.65,vnoise(p*.09-vec2(time*.02)))*exp(-dist*.011);
   c=mix(c,vec3(.9,.98,.97),lines*.4*(1.-night*.6));
   c+=vec3(0.,.07,.06)*smoothstep(.1,.38,vHeight)*near;
+  // The web of sunlight over the shallows, wobbling as the surface moves, fading out with depth.
+  vec2 q=p*.28+vec2(vnoise(p*.21+time*.12),vnoise(p*.21-time*.1+3.7))*1.3;
+  float w1=1.-smoothstep(.035,.11,web(q,time*.7)),w2=1.-smoothstep(.02,.07,web(q*1.85+5.3,time*.95));
+  float shallowWeb=(1.-smoothstep(6.,38.,shore))*smoothstep(-1.5,1.,shore);
+  c=mix(c,vec3(.94,.99,1.),(w1*.55+w2*.22)*shallowWeb*exp(-dist*.008)*(1.-night*.75));
+  // Twinkling glints scattered over the water.
+  vec2 gc=floor(p*1.7+vec2(time*.15,0.));float gr=hash21(gc),tw=step(.982,gr)*pow(max(0.,sin(time*2.6+gr*60.)),10.);
+  c+=vec3(1.,.97,.9)*tw*near*1.3*(1.-night);
 }
 float wave=sin(shore*1.5-time*1.8+n*.35);float foam=smoothstep(.55,.9,wave)*(1.-smoothstep(0.,5.,shore))*smoothstep(-2.,.2,shore);float lace=smoothstep(.72,.98,sin(shore*.85-time*1.1+n*.8))*(1.-smoothstep(3.,11.,shore))*smoothstep(-1.,1.5,shore);c=mix(c,vec3(.82,.94,.85),foam*mix(.8,1.,anime));c=mix(c,vec3(.93,.99,.97),lace*.55*anime);float fog=1.-exp(-pow(length(cameraPosition.xz-vWorld.xz)*fogDensity,2.));c=mix(c,c*mix(.42,.16,anime)+mix(vec3(.02,.065,.08),vec3(.008,.022,.045),anime),night);c=mix(c,horizon,fog);gl_FragColor=vec4(c,1.);}`});
 }

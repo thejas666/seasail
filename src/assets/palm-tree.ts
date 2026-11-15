@@ -1,11 +1,17 @@
 import * as T from 'three';
 import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
+import {ART_STYLE} from '../art-style';
 
 export const PALM_VARIANTS=['tall','leaning','coconut','clump'] as const;
 export type PalmVariant=typeof PALM_VARIANTS[number];
 type Collider={x:number;z:number;r:number};
 type Stem={height:number;lean:number;radius:number;length:number;x:number;z:number;angle:number;nuts:number;seed:number};
-const palettes={bark:new T.Color('#bd7850'),barkLight:new T.Color('#d59662'),barkShade:new T.Color('#895847'),base:new T.Color('#65616a'),leaf:new T.Color('#6d9212'),gold:new T.Color('#9aac0d'),olive:new T.Color('#455f12'),rib:new T.Color('#bdce35'),nut:new T.Color('#9f754d'),nutLight:new T.Color('#bd935b')};
+// The anime style gets a brighter, sun-washed palette and feathery fronds split into many leaflets.
+const ANIME=ART_STYLE==='anime';
+const cartoonPalette={bark:new T.Color('#bd7850'),barkLight:new T.Color('#d59662'),barkShade:new T.Color('#895847'),base:new T.Color('#65616a'),leaf:new T.Color('#6d9212'),gold:new T.Color('#9aac0d'),olive:new T.Color('#455f12'),rib:new T.Color('#bdce35'),nut:new T.Color('#9f754d'),nutLight:new T.Color('#bd935b')};
+const animePalette={bark:new T.Color('#c08a5c'),barkLight:new T.Color('#ecc493'),barkShade:new T.Color('#8a5a40'),base:new T.Color('#a08a72'),leaf:new T.Color('#46b83a'),gold:new T.Color('#8ee03e'),olive:new T.Color('#1f7d3c'),rib:new T.Color('#e6f77c'),nut:new T.Color('#7e7a32'),nutLight:new T.Color('#b9a650'),tip:new T.Color('#c8f660')};
+const palettes=ANIME?animePalette:cartoonPalette;
+const NOTCHES=ANIME?8:3,notchCut=(n:number)=>ANIME?.18+n*.088:.37+n*.22,notchSpan=(r:number)=>ANIME?.018+r*.008:.027+r*.012,notchDepth=(r:number)=>ANIME?.74+r*.2:.49+r*.20;
 const paint=new T.MeshStandardMaterial({vertexColors:true,roughness:1});
 const frondPaint=new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.DoubleSide});
 const windTime={value:0},windStrength={value:1};
@@ -15,6 +21,7 @@ frondPaint.onBeforeCompile=shader=>{shader.uniforms.palmTime=windTime;shader.uni
   transformed.y+=cos(palmTime*1.1+palmPhase)*palmWind*.045*palmWindStrength;
   transformed.z+=cos(palmTime*.7+palmPhase)*palmWind*.075*palmWindStrength;`);};
 frondPaint.customProgramCacheKey=()=> 'illustrated-palm-fronds-v1';
+if(ANIME){const begin=T.ShaderChunk.normal_fragment_begin.replace('gl_FrontFacing ? 1.0 : - 1.0','1.0');const previous=frondPaint.onBeforeCompile;frondPaint.onBeforeCompile=(shader,renderer)=>{previous.call(frondPaint,shader,renderer);shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_begin>',begin);};frondPaint.customProgramCacheKey=()=> 'anime-palm-fronds-v1';}
 export function setPalmWind(time:number,reduced=false){windTime.value=time;windStrength.value=reduced?0:1;}
 const random=(seed:number,n:number)=>{const v=Math.sin(seed*12.9898+n*78.233)*43758.5453;return v-Math.floor(v);};
 class Surface {
@@ -43,9 +50,9 @@ function trunk(s:Stem,out:Surface,colliders:Collider[]){
   return curve;
 }
 function leafWidth(t:number,width:number){return Math.pow(Math.max(0,Math.sin(t*Math.PI)),.72)*width*(1-t*.31);}
-function edgeNotches(t:number,side:number,seed:number){let factor=1;for(let n=0;n<3;n++){const cut=.37+n*.22+(side>0?.035:0)+(random(seed,n)-.5)*.018,span=.027+random(seed,n+10)*.012;const d=(t-cut)/span;if(d>=-1&&d<=1)factor=Math.min(factor,1-(1-Math.abs(d))*(.49+random(seed,n+20)*.20));}return factor;}
+function edgeNotches(t:number,side:number,seed:number){let factor=1;for(let n=0;n<NOTCHES;n++){const cut=notchCut(n)+(side>0?.035:0)+(random(seed,n)-.5)*.018,span=notchSpan(random(seed,n+10));const d=(t-cut)/span;if(d>=-1&&d<=1)factor=Math.min(factor,1-(1-Math.abs(d))*notchDepth(random(seed,n+20)));}return factor;}
 function frond(out:Surface,origin:T.Vector3,angle:number,length:number,width:number,rise:number,droop:number,seed:number){
-  const stations=[0,.06,.13,.2,1];for(const side of [-1,1])for(let n=0;n<3;n++){const cut=.37+n*.22+(side>0?.035:0)+(random(seed,n)-.5)*.018,span=.027+random(seed,n+10)*.012;stations.push(cut-span,cut,cut+span);}stations.sort((a,b)=>a-b);
+  const stations=[0,.06,.13,.2,1];for(const side of [-1,1])for(let n=0;n<NOTCHES;n++){const cut=notchCut(n)+(side>0?.035:0)+(random(seed,n)-.5)*.018,span=notchSpan(random(seed,n+10));stations.push(cut-span,cut,cut+span);}stations.sort((a,b)=>a-b);
   const rows=[...new Set(stations.map(t=>T.MathUtils.clamp(t,0,1)))],across=[-1,-.52,0,.52,1],rotation=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),angle),base=out.p.length/3;
   for(const t of rows){
     const half=leafWidth(t,width),arch=Math.sin(t*Math.PI)*rise-droop*t*t;
@@ -55,7 +62,8 @@ function frond(out:Surface,origin:T.Vector3,angle:number,length:number,width:num
       const color=(u<0?palettes.gold:palettes.leaf).clone().lerp(palettes.olive,t*.20+Math.abs(u)*.13);
       if(Math.abs(u)<.1)color.lerp(palettes.rib,.7);if(t<.13)color.lerp(palettes.olive,(1-t/.13)*.45);
       // A wide painted face and a cool olive face give the illustrated fold.
-      color.multiplyScalar(.72+random(seed,31)*.30);out.vertex(p,color,t*t);
+      if(ANIME){color.lerp(animePalette.tip,T.MathUtils.smoothstep(t,.35,1)*.55);color.multiplyScalar(.9+random(seed,31)*.12);}else color.multiplyScalar(.72+random(seed,31)*.30);
+      out.vertex(p,color,t*t);
     }
   }
   for(let j=0;j<rows.length-1;j++)for(let k=0;k<4;k++){const a=base+j*5+k,b=a+5;out.tri(a,b,a+1);out.tri(a+1,b,b+1);}
@@ -66,7 +74,7 @@ function coconut(out:Surface,center:T.Vector3,size:number,seed:number){
   for(let j=0;j<rings;j++)for(let k=0;k<radial;k++){const a=base+j*(radial+1)+k,b=a+radial+1;out.tri(a,a+1,b);out.tri(a+1,b+1,b);}
 }
 function stem(s:Stem,wood:Surface,leaves:Surface,colliders:Collider[]){
-  const curve=trunk(s,wood,colliders),top=curve.getPoint(1),count=9;
+  const curve=trunk(s,wood,colliders),top=curve.getPoint(1),count=ANIME?11:9;
   for(let n=0;n<count;n++){
     const angle=s.angle+n*Math.PI*2/count+(random(s.seed,n)-.5)*.28,lower=n%3===0,length=s.length*(.88+random(s.seed,n+30)*.19);
     frond(leaves,top,angle,length,lower?.58:.66,lower?.65:1.2,lower?1.65:.83,s.seed+n*3);

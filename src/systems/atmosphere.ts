@@ -1,5 +1,6 @@
 const smooth=(a:number,b:number,x:number)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
-export function daylightAt(seconds:number){const phase=(seconds%1080)/1080;const night=smooth(.49,.65,phase)*(1-smooth(.88,1,phase));const sunset=Math.max(0,1-Math.abs(phase-.55)/.13)*(1-night*.7);return {night,sunset};}
+// Dusk and dawn are long, eased blends (about four and a half and two and a half minutes) so night settles in gradually.
+export function daylightAt(seconds:number){const phase=(seconds%1080)/1080;const night=smooth(.46,.7,phase)*(1-smooth(.86,1,phase));const sunset=Math.max(0,1-Math.abs(phase-.52)/.16)*(1-night*.7);return {night,sunset};}
 
 /** Display-space RGB of the sky shader at the horizon (h=0). Scene fog and
  * ocean haze use the same value, including the dusk and storm transitions. */

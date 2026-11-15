@@ -1,9 +1,13 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {ART_STYLE} from './art-style';
+import {animeDock,animeSign} from './anime-props';
 const palette=new Map<string,T.MeshStandardMaterial>();
 const material=(color:string)=>{if(!palette.has(color))palette.set(color,new T.MeshStandardMaterial({color,roughness:.94}));return palette.get(color)!;};
-const wood=material('#b48650'),darkWood=material('#785334'),endWood=material('#d3ae73'),rope=material('#c4ac76'),iron=material('#62736b'),brass=material('#c2a363'),cream=material('#f3e4bd'),coral=material('#c87851');
+// The anime style uses a warmer, more saturated palette: honey wood, blue-steel iron, bright brass and coral.
+const A=ART_STYLE==='anime';
+const wood=material(A?'#c98a4b':'#b48650'),darkWood=material(A?'#7c4a2b':'#785334'),endWood=material(A?'#f2cd92':'#d3ae73'),rope=material(A?'#ecd197':'#c4ac76'),iron=material(A?'#4f5f7d':'#62736b'),brass=material(A?'#ecb94c':'#c2a363'),cream=material(A?'#fff6df':'#f3e4bd'),coral=material(A?'#ff7b5c':'#c87851');
 function mesh(geo:T.BufferGeometry,mat:T.Material,g:T.Object3D,x=0,y=0,z=0){const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;g.add(m);return m;}
 function box(w:number,h:number,d:number,mat:T.Material,g:T.Object3D,x=0,y=0,z=0){return mesh(new RoundedBoxGeometry(w,h,d,1,Math.min(.045,w*.15,h*.15,d*.15)),mat,g,x,y,z);}
 function cylinder(rt:number,rb:number,h:number,mat:T.Material,g:T.Object3D,x=0,y=0,z=0,n=12){return mesh(new T.CylinderGeometry(rt,rb,h,n),mat,g,x,y,z);}
@@ -28,6 +32,7 @@ export function crate(){
 export function driftwood(){const g=new T.Group();g.name='driftwood-bundle';for(let j=0;j<3;j++){const log=cylinder(.23,.27,2,wood,g,(j-1)*.4,.2+j*.08,0,12);log.rotation.x=Math.PI/2;for(const side of [-1,1]){const cap=cylinder(.232,.232,.02,endWood,g,(j-1)*.4,.2+j*.08,side*1.01,12);cap.rotation.x=Math.PI/2;for(const radius of [.08,.15,.21]){const growth=mesh(new T.TorusGeometry(radius,.008,4,14),darkWood,g,(j-1)*.4,.2+j*.08,side*1.025);growth.rotation.z=j*.3;}}}return combine(g);}
 export function cleat(){const g=new T.Group();g.name='mooring-cleat';box(.23,.04,.13,iron,g,0,.02,0);cylinder(.025,.035,.1,iron,g,0,.07,0);const bar=cylinder(.025,.025,.36,iron,g,0,.12,0);bar.rotation.z=Math.PI/2;return combine(g);}
 export function dock(){
+  if(A)return animeDock();
   const g=new T.Group();g.name='timber-jetty';for(let j=0;j<26;j++){const z=-3-j*.8;box(4.4,.25,.7,j%2?wood:endWood,g,0,1.35,z);if(j%3===0)for(const x of [-1.65,1.65])cylinder(.025,.025,.02,iron,g,x,1.487,z,6);}
   for(const x of [-1.65,1.65])box(.22,.28,21,darkWood,g,x,1.03,-13.4);
   for(const z of [-3,-9.5,-16,-23])for(const x of [-2,2]){cylinder(.18,.23,3.5,darkWood,g,x,.45,z);cylinder(.26,.26,.12,endWood,g,x,2.23,z);ring(.19,.016,darkWood,g,x,2.298,z);for(const y of [1.65,1.73])ring(.205,.025,rope,g,x,y,z);}
@@ -38,7 +43,7 @@ export function dock(){
 function lettering(text:string){
   if(typeof document==='undefined')return null;const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d')!;ctx.fillStyle='#956c43';ctx.fillRect(0,0,512,128);ctx.strokeStyle='#765133';ctx.lineWidth=4;ctx.strokeRect(8,8,496,112);ctx.fillStyle='#f7e8bf';ctx.font='600 35px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text.toUpperCase(),256,65,465);const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;return texture;
 }
-export function sign(text:string){const g=new T.Group();g.name='island-sign';cylinder(.09,.13,2.5,darkWood,g,0,1.1,0);box(2.8,.8,.15,wood,g,0,2.05,0);const texture=lettering(text);if(texture)mesh(new T.PlaneGeometry(2.65,.68),new T.MeshStandardMaterial({map:texture,roughness:1}),g,0,2.05,.081);return combine(g);}
+export function sign(text:string){if(A)return animeSign(text);const g=new T.Group();g.name='island-sign';cylinder(.09,.13,2.5,darkWood,g,0,1.1,0);box(2.8,.8,.15,wood,g,0,2.05,0);const texture=lettering(text);if(texture)mesh(new T.PlaneGeometry(2.65,.68),new T.MeshStandardMaterial({map:texture,roughness:1}),g,0,2.05,.081);return combine(g);}
 export function buoy(color:string){const g=new T.Group();g.name='channel-buoy';mesh(new T.LatheGeometry([new T.Vector2(.28,0),new T.Vector2(.58,.15),new T.Vector2(.52,.8),new T.Vector2(.26,1.3)],14),material(color),g);ring(.52,.04,cream,g,0,.7,0);cylinder(.05,.07,2.5,iron,g,0,1.8,0);const flag=new T.Shape();flag.moveTo(0,0);flag.lineTo(.7,-.18);flag.lineTo(0,-.38);mesh(new T.ShapeGeometry(flag),new T.MeshStandardMaterial({color,side:T.DoubleSide}),g,.03,3.1,0);mesh(new T.SphereGeometry(.15,10,7),brass,g,0,3.2,0);return combine(g);}
 export function chart(){
   const g=new T.Group();g.name='harbor-chart';box(1.5,.045,1.05,cream,g,0,.035,0);for(const x of [-.73,.73]){const roll=cylinder(.045,.045,1.1,endWood,g,x,.055,0);roll.rotation.x=Math.PI/2;}

@@ -25,7 +25,7 @@ export class ExplorerAnimator {
   line:T.Line;linePositions=new Float32Array(24*3);tip=new T.Vector3();bobber=new T.Vector3();reelTarget=new T.Vector3();
   constructor(public rig:ExplorerRig,scene:T.Scene){const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.BufferAttribute(this.linePositions,3));this.line=new T.Line(geometry,new T.LineBasicMaterial({color:'#e9e3bb',transparent:true,opacity:.8}));this.line.frustumCulled=false;this.line.visible=false;scene.add(this.line);}
   get busy(){return this.pickup.age!==null;}
-  startPickup(source:T.Group,height:number){this.cancelPickup();this.pickupHeight=height;this.pickup.start();this.heldCopy=source.clone(true);this.heldCopy.position.set(0,0,.04);this.heldCopy.rotation.set(.2,.1,-.2);this.heldCopy.scale.setScalar(.33);this.heldCopy.traverse(o=>{if(o instanceof T.Mesh&&o.geometry.type==='RingGeometry')o.visible=false;});this.rig.held.add(this.heldCopy);this.rig.held.visible=false;}
+  startPickup(source:T.Group,height:number){this.cancelPickup();this.pickupHeight=height;this.pickup.start();this.heldCopy=source.clone(true);this.heldCopy.position.set(0,0,.04);this.heldCopy.rotation.set(.2,.1,-.2);this.heldCopy.scale.setScalar(.33);this.heldCopy.traverse(o=>{if(o instanceof T.Mesh&&(o.geometry.type==='RingGeometry'||o.name==='pickup-glow'))o.visible=false;});this.rig.held.add(this.heldCopy);this.rig.held.visible=false;}
   cancelPickup(){this.pickup.cancel();this.rig.held.clear();this.rig.held.visible=false;this.heldCopy=null;}
   cast(){this.castAge=0;this.reelAge=10;}
   reel(){this.reelAge=0;}
