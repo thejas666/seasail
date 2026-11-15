@@ -1,0 +1,118 @@
+/* In-game HUD in the same cartoon language as the menus: ice-white cards, navy ink outlines, chunky
+   pressable slots, readable 12px+ text. Loaded last so it overrides the older thin teal HUD. */
+#game { --hud-ink:#13314a; --hud-card:#f2fbff; --hud-blue:#3db8f5; --hud-warm:#ffd45c; --hud-shadow:0 5px 0 #13314a,0 10px 18px #04152440; }
+.playing .vignette { background:linear-gradient(180deg,#0b2c4026,transparent 22%,transparent 72%,#0b2c4040); }
+
+/* Top buttons */
+.playing .top-actions .icon-button { width:46px;height:46px;border:3px solid var(--hud-ink);border-radius:50%;background:var(--hud-card);color:var(--hud-ink);box-shadow:0 4px 0 var(--hud-ink);transition:transform .12s,box-shadow .12s; }
+.playing .top-actions .icon-button:hover { transform:translateY(-2px);box-shadow:0 6px 0 var(--hud-ink); }
+.playing .top-actions .icon-button:active { transform:translateY(3px);box-shadow:0 1px 0 var(--hud-ink); }
+.playing .top-actions .icon-button svg { width:22px;height:22px; }
+.playing .pause-icon { font:700 17px/1 "Segoe UI",Arial,sans-serif; }
+.playing .topbar { top:20px;left:24px;right:24px; }
+
+/* Objective card */
+.playing .journey-card { left:24px;top:20px;width:300px;padding:14px 16px 14px;background:var(--hud-card);border:3px solid var(--hud-ink);border-radius:20px;box-shadow:var(--hud-shadow);text-shadow:none;color:var(--hud-ink); }
+.playing .journey-card .eyebrow { display:inline-flex;padding:4px 10px 5px;border-radius:20px;background:#1f6fd0;color:#fff;font:400 12px/1 var(--game-font);letter-spacing:.6px;text-transform:uppercase; }
+.playing .journey-card h2 { font:400 21px/1.15 var(--game-font);letter-spacing:.2px;color:var(--hud-ink);margin:10px 0 5px; }
+.playing .journey-card p { font-size:13px;line-height:1.45;color:#3f5a6b;max-width:none;margin:0 0 10px; }
+.objective-progress { display:flex;gap:7px;flex-wrap:wrap; }
+.objective-progress:empty { display:none; }
+.objective-progress>span { display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 6px;border:2.5px solid var(--hud-ink);border-radius:20px;background:#fff;font:400 15px/1 var(--game-font);color:var(--hud-ink); }
+.objective-progress>span.done { background:#a5e67f; }
+.objective-progress svg { width:20px;height:20px; }
+.objective-progress b { font-weight:400; }
+.playing .journey-card .inline-link { margin-top:10px;font-size:12px;font-weight:600;color:#3f5a6b;gap:6px;display:inline-flex;align-items:center; }
+.playing .journey-card .inline-link svg { width:18px;height:18px; }
+.playing .journey-card .inline-link kbd,.playing .bottom-hints kbd { min-width:22px;height:20px;padding:0 5px;border:2px solid var(--hud-ink);border-radius:6px;background:#fff;color:var(--hud-ink);font:700 11px/1 Inter,"Segoe UI",sans-serif;opacity:1;box-shadow:0 2px 0 var(--hud-ink); }
+
+/* Compass + speed */
+.playing .compass-rose { top:20px;width:auto;min-width:0;padding:7px 16px 8px;gap:9px;border:3px solid var(--hud-ink);border-radius:30px;background:var(--hud-card);color:var(--hud-ink);box-shadow:0 4px 0 var(--hud-ink);text-shadow:none; }
+.playing .compass-rose::before,.playing .compass-rose::after { content:none; }
+.playing .compass-rose>div { font-size:18px;color:#ff7a3d; }
+.playing .compass-rose small { font:400 15px/1 var(--game-font);letter-spacing:.4px; }
+.speed-pill { padding:4px 10px 5px;border-radius:20px;background:#d6efff;font:400 13px/1 var(--game-font);white-space:nowrap; }
+.speed-pill.warn { background:var(--hud-warm); }
+.speed-pill[hidden] { display:none; }
+
+/* Minimap */
+.playing .minimap { top:82px;right:24px;width:150px;height:150px;background:#8fd8f7;border:4px solid var(--hud-ink);border-radius:50%;box-shadow:0 0 0 4px var(--hud-card),0 0 0 7px var(--hud-ink),0 12px 18px #04152440;color:var(--hud-ink); }
+.playing .minimap::before { top:-27px;left:calc(50% - 12px);width:24px;height:24px;display:grid;place-items:center;border:2.5px solid var(--hud-ink);border-radius:50%;background:var(--hud-warm);color:var(--hud-ink);font:400 13px/1 var(--game-font);text-shadow:none;z-index:2; }
+.playing #mini-chart { padding:0; }
+.playing #mini-chart svg { filter:none; }
+.playing .map-caption { top:164px;padding:4px 11px 5px;border:2.5px solid var(--hud-ink);border-radius:20px;background:var(--hud-card);font-size:12px;font-weight:600;color:var(--hud-ink);text-shadow:none; }
+.large-map { background:#bfe8ff; }
+
+/* Meters */
+.playing .survival { left:24px;bottom:40px;width:236px;padding:11px 13px 12px;gap:9px;border:3px solid var(--hud-ink);border-radius:18px;background:var(--hud-card);box-shadow:var(--hud-shadow); }
+.playing .meter>span { font-size:12px;font-weight:600;color:var(--hud-ink);text-shadow:none;gap:6px; }
+.playing .meter>span svg { width:18px;height:18px; }
+.playing .meter>span b { font:400 14px/1 var(--game-font); }
+.playing .meter>div { height:13px;margin-top:5px;border:2.5px solid var(--hud-ink);border-radius:10px;background:#fff;box-shadow:none; }
+.playing .meter i { border-radius:0;background:linear-gradient(#ffe38a,#ffc23d); }
+.playing .meter:nth-child(2) i { background:linear-gradient(#7fd6ff,#3db8f5); }
+.playing .meter i.low { background:#ff6b5b; }
+
+/* Hotbar */
+.playing .action-bar { bottom:44px;gap:9px; }
+.playing .action-bar button { width:60px;height:60px;padding:0;border:3px solid var(--hud-ink);border-radius:16px;background:var(--hud-card);box-shadow:0 5px 0 var(--hud-ink),0 9px 14px #04152440;transition:transform .1s,box-shadow .1s,background .1s; }
+.playing .action-bar button+button { border-left:3px solid var(--hud-ink); }
+.playing .action-bar button:first-child { border-color:var(--hud-ink);box-shadow:0 5px 0 var(--hud-ink),0 9px 14px #04152440; }
+.playing .action-bar button:hover { background:#fff;border-color:var(--hud-ink);transform:translateY(-3px);box-shadow:0 8px 0 var(--hud-ink),0 12px 16px #04152440; }
+.playing .action-bar button:active { transform:translateY(4px);box-shadow:0 1px 0 var(--hud-ink); }
+.playing .action-bar button[hidden],.playing .action-bar button:disabled { display:none; }
+.playing .action-bar button>svg { width:32px;height:32px; }
+.playing .action-bar button>kbd { left:-7px;top:-8px;min-width:20px;height:20px;display:grid;place-items:center;border:2.5px solid var(--hud-ink);border-radius:50%;background:var(--hud-blue);color:#fff;font:400 12px/1 var(--game-font);opacity:1; }
+.playing .action-bar button>b { right:-7px;bottom:-6px;min-width:22px;height:22px;padding:0 5px;display:grid;place-items:center;border:2.5px solid var(--hud-ink);border-radius:12px;background:var(--hud-warm);color:var(--hud-ink);font:400 13px/1 var(--game-font); }
+.playing .action-bar .slot-name { display:block!important;bottom:-24px;padding:0;border:0;background:none;border-radius:0;font:400 13px/1 var(--game-font);letter-spacing:.3px;color:#fff;-webkit-text-stroke:3px var(--hud-ink);paint-order:stroke fill; }
+.playing .action-bar button:hover .slot-name { color:var(--hud-warm); }
+
+/* Location, prompts, toasts, hints */
+.playing .location-card { right:24px;bottom:40px;padding:9px 16px 10px;border:3px solid var(--hud-ink);border-radius:18px;background:var(--hud-card);box-shadow:var(--hud-shadow);text-shadow:none;color:var(--hud-ink);min-width:0; }
+.playing .location-card small { font-size:11px;font-weight:700;letter-spacing:.6px;color:#5d7280;margin-bottom:3px; }
+.playing .location-card strong { font:400 19px/1 var(--game-font);letter-spacing:.3px;color:var(--hud-ink); }
+.playing .interaction { bottom:150px;padding:9px 18px 9px 10px;gap:10px;border:3px solid var(--hud-ink);border-radius:30px;background:var(--hud-card);box-shadow:0 5px 0 var(--hud-ink);text-shadow:none;font:400 17px/1 var(--game-font);color:var(--hud-ink); }
+.playing .interaction kbd { width:32px;height:32px;border:2.5px solid var(--hud-ink);border-radius:50%;background:var(--hud-warm);color:var(--hud-ink);font:400 16px/1 var(--game-font);box-shadow:none; }
+.playing .toast { top:84px;max-width:460px;padding:10px 20px 11px;border:3px solid var(--hud-ink);border-radius:18px;background:var(--hud-card);color:var(--hud-ink);font-size:14px;font-weight:600;box-shadow:0 5px 0 var(--hud-ink);backdrop-filter:none; }
+.playing .bottom-hints { left:24px;bottom:9px;font-size:12px;font-weight:600;opacity:1;color:#fff;text-shadow:0 1px 3px #082a3c,0 0 8px #082a3c; }
+.playing .bottom-hints #movement-hint { gap:4px; }
+.playing .bottom-hints i { background:#ffffff80;height:12px; }
+.reticle { opacity:.7; }
+.reticle i { box-shadow:0 0 0 1px #13314a80; }
+
+/* Fishing card */
+.playing .fishing-card { right:24px;bottom:120px;width:250px;padding:16px;border:3px solid var(--hud-ink);border-radius:20px;background:var(--hud-card);color:var(--hud-ink);box-shadow:var(--hud-shadow);backdrop-filter:none; }
+.playing .fishing-card>svg { width:34px;height:34px; }
+.playing .fishing-card .eyebrow { font-size:11px;font-weight:700;letter-spacing:.8px;color:#1f6fd0; }
+.playing .fishing-card h3 { font:400 22px/1.1 var(--game-font);color:var(--hud-ink);margin:6px 0 8px; }
+.playing .fishing-card p { font-size:13px;color:#3f5a6b; }
+.playing .fishing-card .small-button { font-size:14px; }
+.playing .fishing-card .bite { padding:11px;margin:9px 0;border-radius:14px;background:var(--hud-warm);color:var(--hud-ink);font:400 16px/1 var(--game-font); }
+
+/* Journal items */
+.resource-symbol { width:40px;height:40px; }
+.resource-symbol svg { width:34px;height:34px; }
+.inventory-item>span:nth-child(2) { font-size:15px;font-weight:600; }
+.inventory-item small { font-size:12px;margin-top:3px; }
+.fish-entry svg { width:34px;height:34px; }
+.fish-entry:not(.found) svg { filter:grayscale(1) opacity(.45); }
+.upgrade-card h3 svg,.upgrade-card>div>svg { width:30px;height:30px; }
+.quest-list li>span svg { width:20px;height:20px; }
+
+@media (max-width:1050px) {
+  .playing .journey-card { width:250px;padding:11px 13px; }
+  .playing .journey-card h2 { font-size:18px; }
+  .playing .action-bar { gap:7px; } .playing .action-bar button { width:50px;height:50px; } .playing .action-bar button>svg { width:27px;height:27px; }
+  .playing .action-bar .slot-name { font-size:12px; }
+  .playing .survival { width:190px; } .playing .minimap { width:120px;height:120px; } .playing .map-caption { top:132px; }
+  .playing .location-card strong { font-size:16px; }
+}
+@media (max-width:820px) { .playing .location-card,.playing .bottom-hints,.playing .compass-rose small { display:none; } .playing .survival { bottom:120px; } }
+
+.playing .compass-rose>.speed-pill { display:inline-block; }
+.playing .compass-rose>.speed-pill[hidden] { display:none; }
+/* Floating island name tags in the world */
+.island-label { filter:none; }
+.island-label strong { display:inline-block;padding:5px 13px 6px;border:3px solid #13314a;border-radius:20px;background:#f2fbff;color:#13314a;font:400 16px/1 var(--game-font);box-shadow:0 4px 0 #13314a; }
+.island-label small { font-size:11px;font-weight:700;letter-spacing:.6px;color:#fff;text-shadow:0 1px 3px #082a3c,0 0 8px #082a3c;margin:0 0 6px; }
+.island-label span { width:3px;height:16px;background:#13314a;margin:0 auto; }

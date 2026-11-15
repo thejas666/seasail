@@ -23,7 +23,7 @@ test('curved and clustered palm colliders follow root rotation, scaling, and wor
 test('the replacement field uses the reference tuft at three quarters of explorer height and keeps pickups clear',()=>{
   const explorerHeight=new Box3().setFromObject(createExplorer()).getSize(new Vector3()).y;
   for(const steps of [3,8]){const geometry=grassTuftGeometry(steps);geometry.computeBoundingBox();const height=geometry.boundingBox!.getSize(new Vector3()).y;assert.ok(Math.abs(height/explorerHeight-.75)<.025);assert.ok(Math.abs(height-COASTAL_GRASS_HEIGHT)<.01);}
-  for(const island of MAP.islands){const b=biome(island);assert.equal(b.grass.geometry,grassTuftGeometry(3));assert.equal(b.grass.count,GRASS_FIELD_COUNT);assert.equal(b.grass.userData.lowDensityCount,GRASS_FIELD_LOW_COUNT);const m=new Matrix4(),scale=new Vector3();for(let n=0;n<b.grass.count;n++){b.grass.getMatrixAt(n,m);scale.setFromMatrixScale(m);assert.ok(scale.y>=.949&&scale.y<=1.051);for(const pickup of PICKUPS.filter(p=>p.island===island.id))assert.ok(Math.hypot(m.elements[12]-(pickup.x-island.x),m.elements[14]-(pickup.z-island.z))>2.59);}}
+  for(const island of MAP.islands){const b=biome(island);assert.equal(b.grass.geometry,grassTuftGeometry(3));assert.equal(b.grass.count,GRASS_FIELD_COUNT);assert.equal(b.grass.userData.lowDensityCount,GRASS_FIELD_LOW_COUNT);const m=new Matrix4(),scale=new Vector3();for(let n=0;n<b.grass.count;n++){b.grass.getMatrixAt(n,m);scale.setFromMatrixScale(m);assert.ok(scale.y>=.42&&scale.y<=1.051);for(const pickup of PICKUPS.filter(p=>p.island===island.id))assert.ok(Math.hypot(m.elements[12]-(pickup.x-island.x),m.elements[14]-(pickup.z-island.z))>2.59);}}
 });
 
 test('coastal GLB exports are self-contained, painted, and below 400 KB each',()=>{

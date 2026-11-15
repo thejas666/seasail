@@ -1,4 +1,6 @@
 import * as T from 'three';
+import {ART_STYLE,getCharacter,getPlayerName,saveArtStyle,saveCharacter,savePlayerName,type Character} from './art-style';
+import {creatorPanel} from './menu-panels';
 import {MAP,PICKUPS,FISH,RESOURCE_LABELS,WORLD_SCALE,type Island} from './data';
 import {freshState,loadState,saveState,collect,available,upgrade,eat,repair,objective,type GameState} from './state';
 import {World} from './world';
@@ -28,32 +30,44 @@ export class Game {
   }
   placeAtDock(){const dock=MAP.islands.find(i=>i.id===this.state.lastDock)!;this.boatPos.set(dock.dock[0],0,dock.dock[1]);this.pos.copy(this.boatPos);this.heading=Math.PI/2;this.cameraYaw=.55;this.aboard=true;this.speed=0;this.turnRate=0;this.anchored=false;this.jumpHeight=this.jumpVelocity=0;this.walkVelocity.set(0,0,0);this.actualWalkSpeed=0;this.pickupApproach=this.pendingPickup=null;this.animator.cancelPickup();this.animator.cancelFishing();}
   persist(){saveSettings(this.state.settings);if(this.playing&&!saveState(this.state)&&!this.saveWarned){this.ui.toast('Your browser could not save this journey. Keep this tab open to continue.');this.saveWarned=true;}}
-  start(reset=false){this.firstPerson=false;this.distance=16;this.pitch=.16;this.ui.el('camera-label').textContent='Third person';if(reset){const settings={...this.state.settings};this.state=freshState();this.state.settings=settings;this.placeAtDock();this.syncPickups();this.world.quality(settings.lowGraphics);}else this.placeAtDock();this.playing=true;this.ui.setPlaying(true);this.panel(null);this.audio.start(this.state.settings.volume);this.world.camera.position.copy(this.boatPos).add(new T.Vector3(12,7,16));this.persist();this.ui.toast('Welcome aboard. Press E to step ashore, and take your time.');}
+  pendingCharacter?:Character;
+  creator(next:string){this.pendingCharacter=undefined;this.panel('pause');this.ui.el('modal').innerHTML=creatorPanel(next);this.ui.el('modal').querySelector<HTMLInputElement>('#explorer-name')?.focus();}
+  start(reset=false){{const name=getPlayerName(),label=this.ui.el('game').querySelector('.journey-card .eyebrow');if(label)label.textContent=name?`${name}’s journey`:'Current journey';}this.firstPerson=false;this.distance=8;this.pitch=.16;this.ui.el('camera-label').textContent='View';if(reset){const settings={...this.state.settings};this.state=freshState();this.state.settings=settings;this.placeAtDock();this.syncPickups();this.world.quality(settings.lowGraphics);}else this.placeAtDock();this.playing=true;this.ui.setPlaying(true);this.panel(null);this.audio.start(this.state.settings.volume);this.world.camera.position.copy(this.boatPos).add(new T.Vector3(12,7,16));this.persist();this.ui.toast('Welcome aboard. Press E to step ashore, and take your time.');}
   captureLook(){if(!this.playing||this.ui.panel||document.pointerLockElement)return;try{void this.world.renderer.domElement.requestPointerLock()?.catch(()=>{});}catch{/* Unlocked mouse movement over the world remains available. */}}
   panel(panel:Panel){this.keys.clear();if(panel){this.cancelGather();this.cancelFishing(false);if(document.pointerLockElement)document.exitPointerLock();this.audio.pause();}else if(this.playing)this.audio.start(this.state.settings.volume);this.ui.showPanel(panel,this.state,this.aboard,this.pos.x,this.pos.z,this.heading);if(!panel&&this.playing)this.captureLook();}
   action(action:string,value?:string){
-    if(action==='start')return this.start(true);if(action==='continue')return this.start();
+    if(action==='start')return this.creator('start-go');if(action==='continue')return this.start();
+    if(action==='pick-character'&&(value==='male'||value==='female')){this.pendingCharacter=value;for(const b of this.ui.el('modal').querySelectorAll<HTMLElement>('[data-action=pick-character]')){b.classList.toggle('active',b.dataset.value===value);b.setAttribute('aria-pressed',String(b.dataset.value===value));}return;}
+    if(action==='start-go'||action==='restart-go'){
+      const name=savePlayerName(this.ui.el('modal').querySelector<HTMLInputElement>('#explorer-name')?.value??''),character=this.pendingCharacter??getCharacter();saveCharacter(character);
+      const begin=()=>{if(action==='start-go')this.start(true);else this.action('restart-now');this.ui.toast(name?`Fair winds, ${name}.`:'Fair winds, explorer.');};
+      // Wait for the chosen character before the voyage begins; if it cannot load, start anyway.
+      void this.world.loadAvatar(character).then(begin,begin);return;
+    }
     if(action==='new'){
       this.panel('pause');this.ui.el('modal').innerHTML=`<section class="panel" role="dialog" aria-modal="true" aria-label="Start a new voyage"><div class="eyebrow">A FRESH HORIZON</div><h2>Another little adventure?</h2><p class="panel-lead">Starting again replaces your saved journey. Your current voyage stays safe until you choose to begin.</p><button class="primary" data-action="restart">Start a new voyage ${icon('arrow')}</button><button class="text-button" data-action="close">Keep this journey</button></section>`;return;
     }
-    if(action==='restart'){this.firstPerson=false;this.world.player.visible=false;this.fishing=null;this.squall=0;this.start(true);return;}
+    if(action==='restart')return this.creator('restart-go');
+    if(action==='restart-now'){this.firstPerson=false;this.world.player.visible=false;this.fishing=null;this.squall=0;this.start(true);return;}
     if(action==='close'){this.panel(null);return;}
     if(action==='settings'||action==='controls'){this.panel(action);return;}
     if(action==='interact'&&this.playing&&!this.ui.panel){this.interact();return;}
-    if(action==='anchor'&&this.playing&&this.aboard&&!this.ui.panel){this.anchored=!this.anchored;this.ui.el('anchor-label').textContent=this.anchored?'Raise anchor':'Drop anchor';this.ui.toast(this.anchored?'Anchor lowered. Let the boat settle, then cast a line.':'Anchor raised. Catch the breeze.');return;}
+    if(action==='anchor'&&this.playing&&this.aboard&&!this.ui.panel){this.anchored=!this.anchored;this.ui.el('anchor-label').textContent=this.anchored?'Raise':'Anchor';this.ui.toast(this.anchored?'Anchor lowered. Let the boat settle, then cast a line.':'Anchor raised. Catch the breeze.');return;}
     if(action==='menu-back'){this.panel(this.playing?'pause':null);return;}
-    if(action==='main-menu'){this.persist();this.playing=false;this.keys.clear();this.audio.pause();this.ui.setPlaying(false);this.panel(null);this.placeAtDock();const menu=this.ui.el('welcome').querySelector('.main-menu')!;if(!menu.querySelector('[data-action="continue"]')){menu.insertAdjacentHTML('afterbegin',`<button class="menu-button continue-button" data-action="continue"><span>${icon('boat')} Continue journey</span>${icon('arrow')}</button>`);const start=menu.querySelector<HTMLElement>('[data-action="start"]');if(start){start.dataset.action='new';start.classList.add('secondary-start');}}return;}
+    if(action==='main-menu'){this.persist();this.playing=false;this.keys.clear();this.audio.pause();this.ui.setPlaying(false);this.panel(null);this.placeAtDock();const menu=this.ui.el('welcome').querySelector('.main-menu')!;if(!menu.querySelector('[data-action="continue"]')){menu.insertAdjacentHTML('afterbegin',`<button class="menu-button play-button continue-button" data-action="continue"><span class="menu-icon">${icon('boat')}</span><span>Continue</span></button>`);const start=menu.querySelector<HTMLElement>('[data-action="start"]');if(start){start.dataset.action='new';start.classList.add('secondary-start');start.classList.remove('play-button');start.lastElementChild!.textContent='New Voyage';}}return;}
     if(action==='sound'){if(this.state.settings.volume>0){this.mutedVolume=this.state.settings.volume;this.state.settings.volume=0;}else this.state.settings.volume=this.mutedVolume||.35;this.audio.start(this.state.settings.volume);this.ui.toast(this.state.settings.volume?'Ocean sounds on':'A quieter moment. Sound muted.');this.persist();return;}
     if(action==='pause'){this.panel(this.ui.panel?null:this.playing?'pause':'settings');return;}
     if(!this.playing&&action!=='setting')return;
     if(action==='journal'||action==='map'){this.panel(this.ui.panel===action?null:action);return;}
     if(action==='tab'){this.ui.tab=value!;this.panel('journal');return;}
-    if(action==='camera'&&!this.ui.panel){this.firstPerson=!this.firstPerson;this.pitch=this.firstPerson?.05:.16;if(this.firstPerson&&this.aboard)this.cameraYaw=this.heading;this.ui.el('camera-label').textContent=this.firstPerson?'First person':'Third person';this.captureLook();this.ui.toast(this.firstPerson?'First person · Move the mouse to look. V to switch back.':'Third person · Move the mouse to look. Scroll to zoom.');return;}
+    if(action==='camera'&&!this.ui.panel){this.firstPerson=!this.firstPerson;this.pitch=this.firstPerson?.05:.16;if(this.firstPerson&&this.aboard)this.cameraYaw=this.heading;this.captureLook();this.ui.toast(this.firstPerson?'First person · Move the mouse to look. V to switch back.':'Third person · Move the mouse to look.');return;}
     if(action==='fish'&&!this.ui.panel){this.fish();return;}
     if(action==='cancel-fish'){this.cancelFishing();return;}
     if(action==='eat'){const ok=eat(this.state,value as 'fruit'|'fish');if(ok){this.audio.tone(520);this.persist();}this.refreshPanel();return;}
     if(action==='repair'){if(repair(this.state)){this.audio.tone(390);this.ui.toast('A little care goes a long way. Boat condition restored.');this.persist();}this.refreshPanel();return;}
     if(action==='upgrade'&&this.aboard){if(upgrade(this.state)){this.state.condition=100;this.audio.tone(523);setTimeout(()=>this.audio.tone(784),180);this.ui.toast('Ready for open water. Your little boat is reinforced.');this.persist();}this.refreshPanel();return;}
+    if(action==='character'){if(value==='male'||value==='female'){saveCharacter(value);void this.world.loadAvatar(value).then(()=>{if(this.ui.panel==='settings')this.panel('settings');});}return;}
+    if(action==='art-style'){if(value!==ART_STYLE&&(value==='anime'||value==='cartoon')){if(this.playing)this.persist();saveSettings(this.state.settings);if(saveArtStyle(value))location.reload();else this.ui.toast('This browser would not save the art style.');}return;}
     if(action==='setting'){
       const [k,v]=value!.split(':');if(k==='volume'){this.state.settings.volume=Number(v);this.audio.volume(Number(v));}if(k==='sensitivity')this.state.settings.sensitivity=Number(v);if(k==='reducedMotion')this.state.settings.reducedMotion=v==='true';if(k==='lowGraphics'){this.state.settings.lowGraphics=v==='true';this.world.quality(v==='true');}this.persist();
     }
@@ -80,7 +94,7 @@ export class Game {
     canvas.addEventListener('pointerdown',()=>this.captureLook());
     document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&this.playing&&!this.ui.panel)this.panel('pause');});
     addEventListener('pointermove',e=>{if(!this.playing||this.ui.panel||(!document.pointerLockElement&&e.target!==canvas))return;this.cameraYaw-=e.movementX*.003*this.state.settings.sensitivity;this.pitch=clamp(this.pitch+e.movementY*.002*this.state.settings.sensitivity,this.firstPerson?-.9:-.35,this.firstPerson?.9:1.05);});
-    canvas.addEventListener('wheel',e=>{e.preventDefault();this.distance=clamp(this.distance+e.deltaY*.02,7,48);},{passive:false});
+    canvas.addEventListener('wheel',e=>e.preventDefault(),{passive:false});
     this.ui.el('modal').addEventListener('keydown',e=>{if(e.key!=='Tab')return;const items=[...this.ui.el('modal').querySelectorAll<HTMLElement>('button:not([disabled]),input')];const i=items.indexOf(document.activeElement as HTMLElement);if(!items.length)return;e.preventDefault();items[(i+(e.shiftKey?-1:1)+items.length)%items.length].focus();});
   }
   syncPickups(){for(const [id,g]of this.world.pickups)g.visible=available(this.state,id);}
@@ -101,11 +115,11 @@ export class Game {
     if(this.nearDock){
       this.cancelFishing(false);const i=this.nearDock;
       if(this.aboard){
-        this.boatPos.set(i.dock[0],0,i.dock[1]);this.speed=0;this.aboard=false;this.distance=10;this.cameraYaw=.08;this.pitch=.12;this.pos.set(i.dock[0],0,i.dock[1]-12);this.state.lastDock=i.id;
+        this.boatPos.set(i.dock[0],0,i.dock[1]);this.speed=0;this.aboard=false;this.distance=2.1;this.cameraYaw=.08;this.pitch=.12;this.pos.set(i.dock[0],0,i.dock[1]-12);this.state.lastDock=i.id;
         if(!this.state.visited.includes(i.id)){this.state.visited.push(i.id);this.ui.toast(`${i.name}. ${i.subtitle}`);}else this.ui.toast('A little time ashore. WASD to explore, E to gather.');
         if(!this.state.discovered.includes(i.id))this.state.discovered.push(i.id);
         if(i.id==='harbor'&&!this.state.completed&&this.state.chart&&this.state.reinforced){this.state.completed=true;this.persist();this.panel('complete');}
-      }else{this.aboard=true;this.distance=16;this.pos.copy(this.boatPos);this.heading=Math.PI/2;this.ui.toast('Back aboard. W to catch the breeze. A / D to steer.');}
+      }else{this.aboard=true;this.distance=8;this.pos.copy(this.boatPos);this.heading=Math.PI/2;this.ui.toast('Back aboard. W to catch the breeze. A / D to steer.');}
       this.persist();this.syncPickups();return;
     }
     this.ui.toast(this.aboard?'Sail close to the end of a wooden jetty to dock.':'Move close to a highlighted item to gather it.');
@@ -165,9 +179,9 @@ export class Game {
   camera(dt:number){
     const camera=this.world.camera;
     if(!this.playing){const orbit=this.state.settings.reducedMotion?0:Math.sin(this.time*.025)*.07;camera.position.set(62+Math.sin(orbit)*18,17,76+Math.cos(orbit)*3);camera.lookAt(-12,6,0);return;}
-    const p=this.pos.clone();const island=this.closestIsland();const ground=groundHeight(island,this.pos.x,this.pos.z);p.y=this.aboard?3.2+(this.state.settings.reducedMotion?0:this.heave):ground+this.jumpHeight+(this.firstPerson?1.8:1.35);if(this.firstPerson&&this.aboard)p.copy(this.world.boat.localToWorld(HELM_EYE.clone()));
+    const p=this.pos.clone();const island=this.closestIsland();const ground=groundHeight(island,this.pos.x,this.pos.z);p.y=this.aboard?3.2+(this.state.settings.reducedMotion?0:this.heave):ground+this.jumpHeight+(this.firstPerson?1.8:1.5);if(this.firstPerson&&this.aboard)p.copy(this.world.boat.localToWorld(HELM_EYE.clone()));
     if(this.firstPerson){camera.position.copy(p);const look=new T.Vector3(-Math.sin(this.cameraYaw)*Math.cos(this.pitch),-Math.sin(this.pitch),-Math.cos(this.cameraYaw)*Math.cos(this.pitch));camera.lookAt(p.clone().add(look));}
-    else{const d=this.distance;const desired=p.clone().add(new T.Vector3(Math.sin(this.cameraYaw)*d*Math.cos(this.pitch),d*Math.sin(this.pitch)+(this.aboard?2.5:1.1),Math.cos(this.cameraYaw)*d*Math.cos(this.pitch)));desired.y=Math.max(.65,desired.y);const ray=desired.clone().sub(p).normalize();this.cameraRay.set(p,ray);this.cameraRay.far=desired.distanceTo(p);const obstruction=this.cameraRay.intersectObjects(this.world.solids,true)[0];if(obstruction&&obstruction.distance>1)desired.copy(obstruction.point).addScaledVector(ray,-.6);camera.position.lerp(desired,this.state.settings.reducedMotion?1:1-Math.exp(-dt*6));camera.lookAt(p);}
+    else{const d=this.distance;const desired=p.clone().add(new T.Vector3(Math.sin(this.cameraYaw)*d*Math.cos(this.pitch),d*Math.sin(this.pitch)+(this.aboard?2.5:.45),Math.cos(this.cameraYaw)*d*Math.cos(this.pitch)));desired.y=Math.max(.65,desired.y);const ray=desired.clone().sub(p).normalize();this.cameraRay.set(p,ray);this.cameraRay.far=desired.distanceTo(p);const obstruction=this.cameraRay.intersectObjects(this.world.solids,true)[0];if(obstruction&&obstruction.distance>.6)desired.copy(obstruction.point).addScaledVector(ray,-.6);camera.position.lerp(desired,this.state.settings.reducedMotion?1:1-Math.exp(-dt*6));camera.lookAt(p);}
   }
   visuals(dt:number){
     const w=this.world,red=this.state.settings.reducedMotion;w.boat.position.copy(this.boatPos);const pose=waterPose(this.boatPos.x,this.boatPos.z,this.heading,this.time);const heave=spring(this.heave,this.heaveVelocity,pose.height,dt);this.heave=heave.value;this.heaveVelocity=heave.velocity;w.boat.position.y=red?0:this.heave;w.boat.rotation.set(red?0:pose.pitch*.7,this.heading,red?0:pose.roll*.7-this.turnRate*this.speed*.018);w.boat.visible=true;const groundIsland=this.closestIsland();const feetHeight=groundHeight(groundIsland,this.pos.x,this.pos.z);w.player.position.set(this.pos.x,this.aboard?1.15+(red?0:this.heave):feetHeight+this.jumpHeight,this.pos.z);if(this.aboard){w.boat.updateMatrixWorld(true);w.player.position.copy(w.boat.localToWorld(HELM_STANCE.clone()));if(!this.fishing)w.player.rotation.y=this.heading+Math.PI;w.player.quaternion.copy(w.boat.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI));}else{w.player.rotation.x=0;w.player.rotation.z=0;}w.player.visible=this.playing;if(!this.playing)w.boat.position.set(MAP.islands[0].dock[0],w.boat.position.y,MAP.islands[0].dock[1]);w.wake.position.set(this.boatPos.x,.09,this.boatPos.z);w.wake.rotation.z=this.heading;w.wake.visible=this.aboard&&Math.abs(this.speed)>.3;w.wake.scale.set(1+(Math.sin(this.time*2)*.05),1.4+Math.abs(this.speed)*.13,1);
@@ -175,11 +189,11 @@ export class Game {
     this.camera(dt);
     if(this.fishing){const delta=this.fishingTarget.clone().sub(w.player.position);const target=Math.atan2(delta.x,delta.z);w.player.rotation.y+=Math.atan2(Math.sin(target-w.player.rotation.y),Math.cos(target-w.player.rotation.y))*(1-Math.exp(-dt*10));}
     const tiller=w.boat.userData.tiller as T.Group;tiller.rotation.y=T.MathUtils.damp(tiller.rotation.y,this.turnRate*.4,8,dt);(w.boat.userData.rudder as T.Object3D).rotation.y=tiller.rotation.y*1.5;w.boat.updateMatrixWorld(true);
-    this.animator.update({dt,time:this.time,walkSpeed:this.actualWalkSpeed,aboard:this.aboard,boatRoll:w.boat.rotation.z,boatPitch:w.boat.rotation.x,turn:this.turnRate,jump:this.jumpHeight,fishing:this.fishing,firstPerson:this.firstPerson,reduced:red,paused:!!this.ui.panel||!this.playing,tiller:this.aboard?(w.boat.userData.tillerHandle as T.Object3D).getWorldPosition(new T.Vector3()):null,floatTarget:this.fishingTarget});
+    this.animator.update({dt,time:this.time,walkSpeed:this.actualWalkSpeed,aboard:this.aboard,boatRoll:w.boat.rotation.z,boatPitch:w.boat.rotation.x,turn:this.turnRate,jump:this.jumpHeight,fishing:this.fishing,firstPerson:this.firstPerson,reduced:red,paused:!!this.ui.panel||!this.playing,tiller:this.aboard?(w.boat.userData.tillerHandle as T.Object3D).getWorldPosition(new T.Vector3()):null,floatTarget:this.fishingTarget});if(w.avatar)w.avatar.walkWeight=this.animator.walkWeight;
     for(const i of MAP.islands){const el=this.ui.el(`label-${i.id}`);const p=new T.Vector3(i.x,19,i.z);const d=p.distanceTo(w.camera.position);p.project(w.camera);el.style.display=(p.z<1&&Math.abs(p.x)<1.2&&Math.abs(p.y)<1.2&&d<240&&(!this.playing||d>45)&&this.state.discovered.includes(i.id))?'block':'none';el.style.left=`${(p.x*.5+.5)*innerWidth}px`;el.style.top=`${(-p.y*.5+.5)*innerHeight}px`;}
     w.reinforcement.visible=this.state.reinforced;w.float.visible=!!this.fishing;w.updateSail(dt,this.time,this.speed,this.heading,red);
     if(this.fishing){const el=w.wake;w.float.visible=this.fishing.phase==='waiting'||this.fishing.phase==='bite'||this.animator.reelAge<1.1;w.float.position.copy(this.animator.bobber);if(this.animator.castAge>.85&&this.animator.reelAge>1.2)w.float.position.y+=Math.sin(this.time*(this.fishing.phase==='bite'?12:2))*.09;el.visible=this.animator.castAge>.85&&this.animator.reelAge>1.2;el.position.set(this.fishingTarget.x,.09,this.fishingTarget.z);el.scale.setScalar(1+Math.sin(this.time*3)*.05);}
     const storm=this.squall>0;const color=new T.Color(storm?'#839da5':SKY_COLOR);w.sky.material.uniforms.storm.value=T.MathUtils.damp(w.sky.material.uniforms.storm.value,storm?1:0,.4,dt);(w.scene.background as T.Color).lerp(color,dt*.3);w.setAtmosphere(this.playing?this.state.playTime:120,storm);w.companions.update(this.time,dt,w.boat,this.speed,w.sky.material.uniforms.storm.value,red,this.pos,this.state.settings.lowGraphics);w.render(this.time,red,dt);
   }
-  frame(t:number){const dt=Math.min((t-this.last)/1000,.05);this.last=t;this.time+=dt;if(this.playing&&!this.ui.panel)this.simulation(dt);if(this.time>this.hudAt){this.hudAt=this.time+.2;(this.ui.el('action-bar').querySelector('[data-action=anchor]') as HTMLButtonElement).disabled=!this.aboard;this.ui.el('anchor-label').textContent=this.anchored?'Raise anchor':'Drop anchor';this.updateInteraction();this.ui.update(this.state,this.pos.x,this.pos.z,this.heading,this.aboard);}this.visuals(dt);requestAnimationFrame(next=>this.frame(next));}
+  frame(t:number){const dt=Math.min((t-this.last)/1000,.05);this.last=t;this.time+=dt;if(this.playing&&!this.ui.panel)this.simulation(dt);if(this.time>this.hudAt){this.hudAt=this.time+.2;(this.ui.el('action-bar').querySelector('[data-action=anchor]') as HTMLButtonElement).disabled=!this.aboard;this.ui.el('anchor-label').textContent=this.anchored?'Raise':'Anchor';this.updateInteraction();this.ui.update(this.state,this.pos.x,this.pos.z,this.heading,this.aboard,{speed:this.speed,anchored:this.anchored});}this.visuals(dt);requestAnimationFrame(next=>this.frame(next));}
 }

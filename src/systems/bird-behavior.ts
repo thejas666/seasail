@@ -8,7 +8,7 @@ export type BirdMotion={mode:BirdMode;position:T.Vector3;velocity:T.Vector3;targ
 // Bird routes and visits use independent event timers, not a shared orbit or a
 // modulo-time perch schedule. A seed makes long behavior simulations testable.
 export class BirdBehavior {
-  birds:BirdMotion[]=[];elapsed=0;nextEncounter=0;quietUntil=0;idle=0;lastVisitor=-1;initialized=false;randomState:number;
+  birds:BirdMotion[]=[];elapsed=0;nextEncounter=0;quietUntil=0;idle=0;lastVisitor=-1;initialized=false;randomState:number;lastBoat=new T.Vector3();boatVelocity=new T.Vector3();
   constructor(count=9,seed=Math.floor(Math.random()*0xffffffff)){this.randomState=seed||1;for(let n=0;n<count;n++)this.birds.push({mode:'roaming',position:new T.Vector3(),velocity:new T.Vector3(),target:new T.Vector3(),home:new T.Vector3(),homeRadius:33,age:0,waypointAt:0,slot:-1,perch:0,restUntil:0,cooldownUntil:0,start:new T.Vector3(),control:new T.Vector3(),exit:new T.Vector3(),transitionDuration:3,heading:0,phase:this.range(0,90),size:this.range(.38,.51),glide:this.random()<.5,styleUntil:this.range(2,7),yaw:0,pitch:0,lookUntil:this.range(1,5),callUntil:0,nextCall:this.range(15,60),shuffleUntil:0,nextShuffle:this.range(10,25),relocateAt:this.range(40,110)});this.nextEncounter=this.range(25,65);}
   random(){let x=this.randomState;x^=x<<13;x^=x>>>17;x^=x<<5;this.randomState=x>>>0;return this.randomState/4294967296;}
   range(min:number,max:number){return min+this.random()*(max-min);}
@@ -21,28 +21,34 @@ export class BirdBehavior {
   initialize(boat:T.Group){for(const b of this.birds){this.coast(b,boat);this.waypoint(b);b.position.copy(b.target);this.waypoint(b);b.velocity.copy(b.target).sub(b.position).normalize().multiplyScalar(this.range(3.6,6.2));b.heading=Math.atan2(-b.velocity.x,-b.velocity.z);}this.initialized=true;}
   depart(b:BirdMotion,boat:T.Group){
     b.mode='departing';b.age=0;b.start.copy(b.position);b.transitionDuration=this.range(2,3);const angle=this.range(0,Math.PI*2);
-    b.exit.copy(b.position).add(new T.Vector3(Math.sin(angle)*this.range(10,17),this.range(5,8),Math.cos(angle)*this.range(10,17)));b.cooldownUntil=this.elapsed+this.range(160,300);this.quietUntil=Math.max(this.quietUntil,this.elapsed+this.range(75,145));b.slot=-1;
+    b.exit.copy(b.position).add(new T.Vector3(Math.sin(angle)*this.range(10,17),this.range(5,8),Math.cos(angle)*this.range(10,17)));b.cooldownUntil=this.elapsed+this.range(160,300);this.quietUntil=Math.max(this.quietUntil,this.elapsed+this.range(80,125));b.slot=-1;
     b.control.copy(b.start).lerp(b.exit,.25);b.control.y+=1.3;this.waypoint(b,boat.position);
   }
   encounter(boat:T.Group,speed:number,storm:number,active:number){
-    this.nextEncounter=this.elapsed+this.range(50,135);
+    this.nextEncounter=this.elapsed+this.range(35,90);
     if(storm>.3||this.birds.some(b=>b.mode==='approaching'||b.mode==='landing'||b.mode==='perched'||b.mode==='departing'))return;
     const candidates=this.birds.map((b,index)=>({b,index})).filter(({b,index})=>index<active&&index!==this.lastVisitor&&b.mode==='roaming'&&this.elapsed>b.cooldownUntil&&b.position.distanceTo(boat.position)<210);
-    if(!candidates.length)return;const {b,index}=candidates[Math.floor(this.random()*candidates.length)];this.lastVisitor=index;b.age=0;b.cooldownUntil=this.elapsed+this.range(100,200);
-    if(this.elapsed>this.quietUntil&&this.idle>12&&Math.abs(speed)<.8&&storm<.2&&this.random()<.42){b.mode='approaching';b.slot=this.random()<.5?0:1;}
-    else{b.mode='passing';const angle=this.range(0,Math.PI*2),distance=this.range(16,32);b.target.copy(boat.position).add(new T.Vector3(Math.sin(angle)*distance,this.range(7,13),Math.cos(angle)*distance));}
+    if(!candidates.length)return;const {b,index}=candidates.splice(Math.floor(this.random()*candidates.length),1)[0];this.lastVisitor=index;b.age=0;b.cooldownUntil=this.elapsed+this.range(100,200);
+    if(this.elapsed>this.quietUntil&&this.idle>6&&Math.abs(speed)<.8&&storm<.2&&this.random()<.6){b.mode='approaching';b.slot=this.random()<.5?0:1;return;}
+    // Otherwise escort the boat for a while, flying off one side; sometimes a second gull joins on the other.
+    this.escort(b,this.random()<.5?-1:1);
+    if(this.random()<.35){const partner=candidates.find(c=>c.b!==b);if(partner){partner.b.age=0;partner.b.cooldownUntil=b.cooldownUntil;this.escort(partner.b,-Math.sign(b.control.x));}}
+  }
+  escort(b:BirdMotion,side:number){
+    b.mode='passing';b.age=0;b.control.set(side*this.range(7,12),this.range(3.5,7),this.range(-6,4));b.transitionDuration=this.range(14,28);
   }
   steer(b:BirdMotion,dt:number,boat:T.Group){
-    const desired=b.target.clone().sub(b.position),distance=desired.length();desired.normalize().multiplyScalar(b.mode==='approaching'?T.MathUtils.clamp(distance*.6,1.3,5.5):4.4+Math.sin(b.phase)*1.3);
+    const desired=b.target.clone().sub(b.position),distance=desired.length();desired.normalize().multiplyScalar(b.mode==='approaching'?T.MathUtils.clamp(distance*.6,1.3,5.5):b.mode==='passing'?T.MathUtils.clamp(distance*.7,1.5,9):4.4+Math.sin(b.phase)*1.3);
+    if(b.mode==='passing')desired.add(this.boatVelocity);
     if(b.mode==='roaming'){
       for(const other of this.birds){if(other===b)continue;const delta=b.position.clone().sub(other.position),d=delta.length();if(d>0&&d<4)desired.addScaledVector(delta,(4-d)/d);}
       const away=b.position.clone().sub(boat.position);away.y=0;if(away.length()<12&&b.position.y<11)desired.add(away.normalize().multiplyScalar(3));
     }
     if((b.mode==='roaming'||b.mode==='approaching'&&distance>14)&&Math.hypot(b.position.x-b.home.x,b.position.z-b.home.z)<b.homeRadius+8)desired.y=Math.max(desired.y,(21-b.position.y)*1.2);
-    b.velocity.lerp(desired,1-Math.exp(-dt*(b.mode==='approaching'?2.2:.8)));b.position.addScaledVector(b.velocity,dt);
+    b.velocity.lerp(desired,1-Math.exp(-dt*(b.mode==='approaching'?2.2:b.mode==='passing'?1.4:.8)));b.position.addScaledVector(b.velocity,dt);
   }
   update(dt:number,boat:T.Group,speed:number,storm:number,active=this.birds.length){
-    dt=Math.min(.2,Math.max(0,dt));if(!this.initialized)this.initialize(boat);this.elapsed+=dt;boat.updateMatrixWorld(true);this.idle=Math.abs(speed)<.8&&storm<.2?this.idle+dt:0;
+    dt=Math.min(.2,Math.max(0,dt));if(!this.initialized){this.initialize(boat);this.lastBoat.copy(boat.position);}this.elapsed+=dt;if(dt>0)this.boatVelocity.lerp(boat.position.clone().sub(this.lastBoat).divideScalar(dt),1-Math.exp(-dt*3));this.lastBoat.copy(boat.position);boat.updateMatrixWorld(true);this.idle=Math.abs(speed)<.8&&storm<.2?this.idle+dt:0;
     if(this.elapsed>=this.nextEncounter)this.encounter(boat,speed,storm,active);
     for(const b of this.birds){
       b.age+=dt;const previous=b.position.clone();
@@ -52,7 +58,10 @@ export class BirdBehavior {
           const local=BIRD_PERCHES[b.slot].clone();local.y+=4.2;local.z+=b.slot===0?8:-8;b.target.copy(boat.localToWorld(local));
           if(b.position.distanceTo(b.target)<2.5){b.mode='landing';b.age=0;b.start.copy(b.position);b.control.copy(b.velocity).multiplyScalar(.65).add(b.position);b.transitionDuration=this.range(2.5,3.8);}
           else if(b.age>35)this.depart(b,boat);
-        }else if(b.position.distanceTo(b.target)<5||this.elapsed>b.waypointAt&&b.mode==='roaming'||b.mode==='passing'&&b.age>24){const passing=b.mode==='passing';b.mode='roaming';b.age=0;this.waypoint(b,passing?boat.position:undefined);}
+        }else if(b.mode==='passing'&&(b.age>b.transitionDuration||storm>.5)){b.mode='roaming';b.age=0;this.waypoint(b,boat.position);
+        }else if(b.mode==='passing'){
+          const local=b.control.clone();local.y+=Math.sin(this.elapsed*.6+b.phase)*.8;local.z+=Math.sin(this.elapsed*.23+b.phase)*3;b.target.copy(boat.localToWorld(local));
+        }else if(b.position.distanceTo(b.target)<5||this.elapsed>b.waypointAt&&b.mode==='roaming'){b.mode='roaming';b.age=0;this.waypoint(b);}
         if(b.mode==='roaming'||b.mode==='passing'||b.mode==='approaching')this.steer(b,dt,boat);
         b.perch=T.MathUtils.damp(b.perch,0,4,dt);
       }

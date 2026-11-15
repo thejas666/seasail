@@ -37,7 +37,6 @@ GitHub synchronizes source code. Browser saves stay on the device and browser wh
 | WASD / arrow keys | Walk; throttle and steer while sailing |
 | Mouse movement | Look freely in first or third person |
 | Click world | Capture mouse in either view; Esc releases it |
-| Scroll | Third-person camera distance |
 | E | Gather, dock, board |
 | F / Space during fishing | Cast / catch when the bite appears |
 | V | Switch first / third person |

@@ -3,7 +3,7 @@ import {flowerField} from './illustrated-assets';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as T from 'three';
 import {MAP,PICKUPS,WORLD_SCALE,type Island} from './data';
-import {terrain,biome,sky,clouds,ocean,groundHeight,localHeight,SKY_COLOR,type Biome} from './environment';
+import {terrain,biome,sky,clouds,birdFlocks,ocean,groundHeight,localHeight,SKY_COLOR,rand,animeRockGeometry,animeRockMaterial,type Biome} from './environment';
 import {loadNature,plantNature} from './nature';
 import type {BoxObstacle} from './systems/collision';
 import {Seabirds} from './companions';
@@ -11,6 +11,16 @@ import {daylightAt,horizonAt,seaFogDensity} from './systems/atmosphere';
 import {TILLER_BASE,TILLER_GRIP} from './systems/boat-layout';
 import {SailCloth} from './systems/sail-cloth';
 import {createExplorer} from './explorer-model';
+import {createAnimeExplorer} from './explorer-anime';
+import {decorateAnimeIsland} from './anime-island';
+import {ART_STYLE,getCharacter} from './art-style';
+import type {VrmAvatar} from './vrm-avatar';
+import type {ExplorerRig} from './explorer-model';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {BoatLantern} from './lantern';
 import {createPalm,PALM_VARIANTS,setPalmWind,palmColliders} from './assets/palm-tree';
 const mat=(color:T.ColorRepresentation,extra:T.MeshStandardMaterialParameters={})=>new T.MeshStandardMaterial({color,roughness:.96,flatShading:false,...extra});
@@ -60,12 +70,22 @@ export function boatModel(){
   const cargo=Props.crate();cargo.position.set(.85,1.05,.4);p.add(cargo);const cask=Props.barrel();cask.position.set(-.9,1.05,-.6);p.add(cask);
   const rudder=box(.13,.8,.9,railMaterial,0,.15,3.1,p);const tiller=new T.Group();tiller.position.copy(TILLER_BASE);p.add(tiller);cylinder(.045,.055,1.73,railMaterial,0,1.115,2.9,p,10);const grip=TILLER_GRIP.clone().sub(TILLER_BASE);lineBetween(new T.Vector3(),grip,.048,railMaterial,tiller);const handle=new T.Object3D();handle.position.copy(grip);tiller.add(handle);p.userData.tiller=tiller;p.userData.tillerHandle=handle;p.userData.rudder=rudder;return p;
 }
-export function characterModel(){return createExplorer();}
+export function characterModel(){return ART_STYLE==='anime'?createAnimeExplorer():createExplorer();}
+// Anime look: richer colour, lifted shadows and a soft glow on bright areas.
+const gradeShader={uniforms:{tDiffuse:{value:null},saturation:{value:1.24},contrast:{value:1.05}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform sampler2D tDiffuse;uniform float saturation;uniform float contrast;varying vec2 vUv;void main(){vec4 t=texture2D(tDiffuse,vUv);float l=dot(t.rgb,vec3(.2126,.7152,.0722));vec3 c=mix(vec3(l),t.rgb,saturation);c=(c-.5)*contrast+.5;c+=vec3(.012,.008,.02)*(1.-l);float v=smoothstep(1.25,.45,length(vUv-.5)*1.5);gl_FragColor=vec4(c*mix(.9,1.,v),t.a);}'};
 export class World {
   scene=new T.Scene(); camera=new T.PerspectiveCamera(52,1,.1,1600);renderer:T.WebGLRenderer;
   boat=boatModel();player=characterModel();reinforcement=new T.Group();float=new T.Group();pickups=new Map<string,T.Group>();landmarks:T.Group[]=[];palms:T.Group[]=[];solids:T.Object3D[]=[];solidBoxes:BoxObstacle[]=[];
   biomes:{island:Island;biome:Biome}[]=[];landObstacles:{x:number;z:number;r:number}[]=[];natureGroups:T.Group[]=[];lowGraphics=false;sky=sky();clouds=clouds();water:T.ShaderMaterial;sun:T.DirectionalLight;birds:T.Group; wake:T.Mesh; marker:T.Group; rocks:{x:number;z:number;r:number}[]=[];
   companions:Seabirds;ambient=new T.HemisphereLight('#d3eeff','#827041',1.5);lantern=new T.PointLight('#ffd183',.3,11,2);stars:T.Points;moon:T.Mesh;rain:T.LineSegments;floatingProps:T.Group[]=[];warmMaterials:T.MeshStandardMaterial[]=[];
+  anime=ART_STYLE==='anime';composer?:EffectComposer;flocks?:ReturnType<typeof birdFlocks>;private flockTime=0;avatar?:VrmAvatar;
+  /** Anime style: wear the VRM character model if one is present; otherwise keep the built-in explorer. */
+  avatarCharacter='';
+  async loadAvatar(character=getCharacter()){
+    if(!this.anime)return false;if(this.avatar&&this.avatarCharacter===character)return true;
+    try{const {loadVrmAvatar}=await import('./vrm-avatar');const next=await loadVrmAvatar(`${import.meta.env.BASE_URL}assets/models/${character==='male'?'explorer-male':'explorer'}.vrm`,this.player.userData.rig as ExplorerRig);this.avatar?.dispose();this.avatar=next;this.avatarCharacter=character;return true;}
+    catch(error){console.warn('Anime character model not loaded; using the built-in explorer.',error);return false;}
+  }
   cloth:SailCloth;sailMesh:T.Mesh;flagMesh:T.Mesh;lamp:BoatLantern;
   constructor(container:HTMLElement){
     this.renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));this.renderer.setSize(innerWidth,innerHeight);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.98;container.append(this.renderer.domElement);
@@ -98,13 +118,24 @@ export class World {
     this.lamp=new BoatLantern(this.boat);this.lantern=this.lamp.light;
     const starVertices:number[]=[];for(let j=0;j<160;j++){const a=j*2.399,b=.15+(j%17)/17*1.2;starVertices.push(Math.cos(a)*Math.cos(b)*600,Math.sin(b)*600,Math.sin(a)*Math.cos(b)*600);}const starGeometry=new T.BufferGeometry();starGeometry.setAttribute('position',new T.Float32BufferAttribute(starVertices,3));this.stars=new T.Points(starGeometry,new T.PointsMaterial({color:'#fff0c9',size:1.2,transparent:true,opacity:0,fog:false,depthWrite:false}));this.scene.add(this.stars);this.moon=mesh(new T.SphereGeometry(10,16,12),new T.MeshBasicMaterial({color:'#fff4d4',transparent:true,opacity:0,fog:false}),-210,280,-330,this.scene);this.moon.castShadow=false;
     const drops:number[]=[];for(let j=0;j<100;j++){const x=Math.sin(j*42.7)*12,z=Math.cos(j*21.2)*12,y=j%20;drops.push(x,y,z,x+.12,y-.8,z+.04);}const rainGeometry=new T.BufferGeometry();rainGeometry.setAttribute('position',new T.Float32BufferAttribute(drops,3));this.rain=new T.LineSegments(rainGeometry,new T.LineBasicMaterial({color:'#d6e8e9',transparent:true,opacity:0,depthWrite:false}));this.rain.frustumCulled=false;this.scene.add(this.rain);
+    if(this.anime){
+      const sunDir=new T.Vector3(-.52,.3,.66).normalize();this.sky.material.uniforms.anime.value=1;this.sky.material.uniforms.sunDir.value.copy(sunDir);this.water.uniforms.anime.value=1;this.water.uniforms.sunDir.value.copy(sunDir);
+      this.flocks=birdFlocks(0,-200);this.scene.add(this.flocks.group);
+      // Distant sea stacks ring the archipelago, like a painted backdrop you can sail up to.
+      const xs=MAP.islands.map(i=>i.x),zs=MAP.islands.map(i=>i.z),cx=(Math.min(...xs)+Math.max(...xs))/2,cz=(Math.min(...zs)+Math.max(...zs))/2,reach=Math.max(...MAP.islands.map(i=>Math.hypot(i.x-cx,i.z-cz)+i.radius)),random=rand(4242);
+      for(let n=0;n<16;n++){const a=n/16*Math.PI*2+random()*.25,d=reach+70+random()*150,x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d,w=7+random()*9,h=3.2+random()*3.2;
+        for(let k=0;k<3;k++){const s=k?w*(.3+random()*.35):w,ox=k?Math.cos(a*3+k*2.4)*w*1.5:0,oz=k?Math.sin(a*3+k*2.4)*w*1.5:0,stack=new T.Mesh(animeRockGeometry((n+k)%6,k?h*.6:h,true),animeRockMaterial());stack.position.set(x+ox,-.5,z+oz);stack.scale.setScalar(s);stack.rotation.y=random()*6.28;this.scene.add(stack);this.rocks.push({x:x+ox,z:z+oz,r:s*1.15});}}this.renderer.toneMapping=T.NeutralToneMapping;this.renderer.toneMappingExposure=1.02;
+      const target=new T.WebGLRenderTarget(innerWidth,innerHeight,{type:T.HalfFloatType,samples:4});this.composer=new EffectComposer(this.renderer,target);
+      this.composer.addPass(new RenderPass(this.scene,this.camera));this.composer.addPass(new UnrealBloomPass(new T.Vector2(innerWidth,innerHeight),.3,.75,.86));this.composer.addPass(new ShaderPass(gradeShader));this.composer.addPass(new OutputPass());
+    }
     addEventListener('resize',()=>this.resize());this.resize();
   }
   island(i:Island){
     const g=new T.Group();g.position.set(i.x,0,i.z);this.scene.add(g);this.landmarks.push(g);
-    const surface=terrain(i);g.add(surface);this.solids.push(surface);const vegetation=biome(i);g.add(vegetation.objects);this.biomes.push({island:i,biome:vegetation});
+    const surface=terrain(i);g.add(surface);this.solids.push(surface);const vegetation=biome(i);g.add(vegetation.objects);this.biomes.push({island:i,biome:vegetation});for(const o of vegetation.obstacles)this.landObstacles.push({x:i.x+o.x,z:i.z+o.z,r:o.r});this.solids.push(...vegetation.objects.children.flatMap(c=>c.children.filter(r=>r.userData.cameraSolid)));
+    if(this.anime){const extra=decorateAnimeIsland(i,vegetation.obstacles);g.add(extra.group);for(const o of extra.obstacles)this.landObstacles.push({x:i.x+o.x,z:i.z+o.z,r:o.r});this.solids.push(...extra.solids);}
     for(let j=0;j<8;j++){const a=j*2.39+.5,rad=i.radius*(.42+(j%3)*.13);const x=Math.cos(a)*rad,z=Math.sin(a)*rad;if(x>8&&z>14||PICKUPS.some(p=>p.island===i.id&&Math.hypot(p.x-i.x-x,p.z-i.z-z)<3.2))continue;const tree=palm(g,x,z,9+(j%3)*1.5,j*.6);tree.position.y=localHeight(i,x,z);this.palms.push(tree);this.solids.push(...tree.children.filter(c=>c.userData.cameraSolid));this.landObstacles.push(...palmColliders(tree));}
-    g.add(flowerField(i));
+    g.add(flowerField(i,vegetation.wind));
     const dx=i.dock[0]-i.x,dz=i.dock[1]-i.z;for(const zz of [dz-3,dz-9.5,dz-16,dz-23])for(const xx of [-2,2])this.landObstacles.push({x:i.x+dx+xx,z:i.z+zz,r:.22});
     const jetty=Props.dock();jetty.position.set(dx,0,dz);g.add(jetty);const sign=Props.sign(i.name);sign.position.set(dx-4,1.5,dz-13);g.add(sign);this.landObstacles.push({x:i.x+dx-4,z:i.z+dz-13,r:.14});this.solidBoxes.push({x:i.x+dx-4,z:i.z+dz-13,hx:1.4,hz:.1});
     // A ring marks the sheltered fishing spot by each jetty.
@@ -123,19 +154,27 @@ export class World {
     }
     if(i.landmark==='shell'){for(let j=0;j<5;j++){const s=mesh(new T.SphereGeometry(1,6,4),mat('#efb9a3'),-9+j*3,1.6,15+Math.sin(j)*2,g);s.scale.set(1,.4,1);}}
   }
-  resize(){this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();this.renderer.setSize(innerWidth,innerHeight);}
+  resize(){this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();this.renderer.setSize(innerWidth,innerHeight);this.composer?.setPixelRatio(this.renderer.getPixelRatio());this.composer?.setSize(innerWidth,innerHeight);}
   updateSail(dt:number,time:number,speed:number,heading:number,reduced:boolean){this.cloth.advance(dt,time,speed,heading,this.sky.material.uniforms.storm.value,this.lowGraphics,reduced);this.sailMesh.geometry.attributes.position.needsUpdate=true;this.sailMesh.geometry.computeVertexNormals();const flag=this.flagMesh.geometry.attributes.position;for(let vertex=0;vertex<flag.count;vertex++)flag.setZ(vertex,reduced?0:Math.sin(time*5+flag.getX(vertex)*3)*flag.getX(vertex)*.16);flag.needsUpdate=true;this.flagMesh.geometry.computeVertexNormals();}
-  setAtmosphere(seconds:number,storm:boolean){const {night,sunset}=daylightAt(seconds);this.sky.material.uniforms.night.value=night;this.sky.material.uniforms.sunset.value=sunset;this.water.uniforms.night.value=night;this.ambient.intensity=1.5-night*.55;this.ambient.color.set(night>.5?'#a6d4ef':'#d3eeff');this.sun.intensity=(3.2-night*2.2)*(storm?.55:1);this.sun.color.set(night>.5?'#c2dbf2':sunset>.1?'#ffd5a1':'#fff0cf');this.lantern.intensity=.3+night*5;for(const material of this.warmMaterials)material.emissiveIntensity=night*.8+.05;(this.stars.material as T.PointsMaterial).opacity=night*.8;(this.moon.material as T.MeshBasicMaterial).opacity=night;this.stars.position.copy(this.camera.position);this.moon.position.copy(this.camera.position).add(new T.Vector3(-210,280,-330));const horizon=horizonAt(night,sunset,this.sky.material.uniforms.storm.value);this.scene.fog!.color.setRGB(...horizon,T.SRGBColorSpace);(this.scene.fog as T.FogExp2).density=seaFogDensity(night);this.water.uniforms.horizon.value.set(...horizon);this.water.uniforms.fogDensity.value=seaFogDensity(night);}
+  setAtmosphere(seconds:number,storm:boolean){const {night,sunset}=daylightAt(seconds);this.sky.material.uniforms.night.value=night;this.sky.material.uniforms.sunset.value=sunset;this.water.uniforms.night.value=night;this.ambient.intensity=1.5-night*.55;this.ambient.color.set(night>.5?'#a6d4ef':'#d3eeff');this.sun.intensity=(3.2-night*2.2)*(storm?.55:1);this.sun.color.set(night>.5?'#c2dbf2':sunset>.1?'#ffd5a1':'#fff0cf');this.lantern.intensity=.3+night*5;for(const material of this.warmMaterials)material.emissiveIntensity=night*.8+.05;(this.stars.material as T.PointsMaterial).opacity=night*.8;(this.moon.material as T.MeshBasicMaterial).opacity=night;this.stars.position.copy(this.camera.position);this.moon.position.copy(this.camera.position).add(new T.Vector3(-210,280,-330));const horizon=horizonAt(night,sunset,this.sky.material.uniforms.storm.value);this.scene.fog!.color.setRGB(...horizon,T.SRGBColorSpace);(this.scene.fog as T.FogExp2).density=seaFogDensity(night);this.water.uniforms.horizon.value.set(...horizon);this.water.uniforms.fogDensity.value=seaFogDensity(night);if(this.anime){
+      // A properly dark night: dim blue moonlight, deep shadows and a lower exposure, so the boat lantern and stars matter.
+      this.ambient.intensity=T.MathUtils.lerp(1.68,.3,night);this.ambient.color.set(night>.5?'#7f9fd6':'#d3eeff');this.ambient.groundColor.set(night>.5?'#1f2a42':'#a9c98a');
+      this.sun.intensity=T.MathUtils.lerp(3.46,.42,night)*(storm?.55:1);this.sun.color.set(night>.5?'#9db8ff':sunset>.1?'#ffd5a1':'#ffe7bd');this.renderer.toneMappingExposure=1.02-.24*night;
+      const glow=this.clouds.userData.glow as {value:number}|undefined;if(glow)glow.value=1-.9*night;
+      // Warm sea haze: a golden horizon by day, with enough fog that distant islands and stacks soften into silhouettes.
+      const k=Math.min(1,Math.max(night,this.sky.material.uniforms.storm.value)),warm=[.97,.86,.63],blend=horizon.map((v,j)=>(warm[j]*(1-k)+v*k)*(1-night*.62)) as [number,number,number],density=seaFogDensity(night)*.62;
+      this.scene.fog!.color.setRGB(...blend,T.SRGBColorSpace);(this.scene.fog as T.FogExp2).density=density;this.water.uniforms.horizon.value.set(...blend);this.water.uniforms.fogDensity.value=density;this.sky.material.uniforms.haze.value.set(...blend);}}
   async loadNature(progress:(done:number)=>void){const assets=await loadNature(progress);for(const {island,biome:b}of this.biomes){const nature=plantNature(island,b,assets);this.scene.add(nature.group);this.natureGroups.push(nature.group);this.landObstacles.push(...nature.colliders);nature.group.traverse(object=>{if(object.userData.cameraSolid)this.solids.push(object);});}this.quality(this.lowGraphics);this.scene.updateMatrixWorld(true);}
   quality(low:boolean){this.lowGraphics=low;for(const group of this.natureGroups)group.traverse(child=>{if(child.userData.lowDetailHide)child.visible=!low;if(child instanceof T.InstancedMesh&&child.userData.fullCount)child.count=low?child.userData.lowDensityCount:child.userData.fullCount;});this.renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:1.5));this.renderer.shadowMap.enabled=!low;this.sun.castShadow=!low;for(const {biome:b} of this.biomes)b.grass.count=low?b.grass.userData.lowDensityCount:b.grass.userData.fullCount;this.resize();}
   render(time:number,reduced:boolean,dt=.016){
     this.lamp.update(dt,time,this.boat.rotation.z,this.boat.rotation.x,this.sky.material.uniforms.night.value,reduced);
+    if(this.flocks&&!reduced){this.flocks.update(time,Math.min(.1,Math.max(0,time-this.flockTime)));}this.flockTime=time;
     this.water.uniforms.time.value=reduced?0:time;for(const prop of this.floatingProps){prop.position.y=reduced?0:Math.sin(time*.9+prop.position.x)*.13;prop.rotation.z=reduced?0:Math.sin(time*.7+prop.position.z)*.04;}this.sky.dome.position.copy(this.camera.position);this.clouds.position.x=reduced?0:Math.sin(time*.012)*15;
     const rainStrength=this.sky.material.uniforms.storm.value;this.rain.visible=rainStrength>.03;(this.rain.material as T.LineBasicMaterial).opacity=rainStrength*.2;this.rain.position.copy(this.boat.position);const dropPositions=this.rain.geometry.attributes.position;for(let j=0;j<(this.lowGraphics?40:100);j++){const y=((j%20-(reduced?0:time*12))%20+20)%20;dropPositions.setY(j*2,y);dropPositions.setY(j*2+1,y-.8);}dropPositions.needsUpdate=true;this.rain.geometry.setDrawRange(0,this.lowGraphics?80:200);
     this.marker.rotation.y=time;this.marker.position.y+=reduced?0:Math.sin(time*2)*.2;
     setPalmWind(time,reduced);
     for(const island of this.landmarks)island.visible=Math.hypot(island.position.x-this.camera.position.x,island.position.z-this.camera.position.z)<300;for(const group of this.natureGroups)group.visible=Math.hypot(group.position.x-this.camera.position.x,group.position.z-this.camera.position.z)<300;
     for(const {island,biome:b}of this.biomes){const distance=Math.hypot(island.x-this.camera.position.x,island.z-this.camera.position.z);b.objects.visible=distance<750;b.grass.visible=distance<145;b.wind.value=reduced?0:time;}
-    const focus=this.player.visible?this.player.position:this.boat.position;this.sun.position.set(focus.x-48,82,focus.z+55);this.sun.target.position.set(focus.x,0,focus.z);this.renderer.render(this.scene,this.camera);
+    const focus=this.player.visible?this.player.position:this.boat.position;this.sun.position.set(focus.x-48,82,focus.z+55);this.sun.target.position.set(focus.x,0,focus.z);this.avatar?.sync();if(this.composer&&!this.lowGraphics)this.composer.render();else this.renderer.render(this.scene,this.camera);
   }
 }

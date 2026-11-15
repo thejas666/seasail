@@ -1,0 +1,150 @@
+/* Anime art style interface: slim and elegant instead of chunky. Translucent midnight panels, thin
+   champagne lines, cream pill buttons, a serif display face and a soft rounded body face.
+   Everything is scoped to .style-anime, so the cartoon style is untouched. */
+@font-face { font-family:'Zen Maru';font-weight:500;font-display:swap;src:url('./assets/fonts/zen-maru-500.woff2') format('woff2'); }
+@font-face { font-family:'Zen Maru';font-weight:700;font-display:swap;src:url('./assets/fonts/zen-maru-700.woff2') format('woff2'); }
+@font-face { font-family:'Cinzel';font-weight:700;font-display:block;src:url('./assets/fonts/cinzel-700.woff2') format('woff2'); }
+.style-anime {
+  --a-panel:#1d2536e0; --a-panel-solid:#232c40; --a-line:#eadcb466; --a-cream:#ece5d8; --a-gold:#e6cc8f; --a-text:#f4f0e6; --a-dim:#b7bfd0; --a-ink:#39425a;
+  --a-shadow:0 10px 30px #0812248c; --a-body:'Zen Maru',Inter,'Segoe UI',sans-serif; --a-display:'Cinzel','Zen Maru',serif;
+  --game-font:var(--a-body); --display-font:var(--a-display);
+  --title-ink:var(--a-ink); --title-cream:var(--a-cream); --title-coral:var(--a-gold); --hud-ink:var(--a-ink); --hud-card:var(--a-panel); --hud-warm:var(--a-gold); --hud-blue:#7fb6e6;
+}
+.style-anime body,.style-anime #game,.style-anime .loading-screen { font-family:var(--a-body);font-weight:500; }
+
+/* ---------- Loading ---------- */
+.style-anime .loading-screen { background:radial-gradient(ellipse 90% 70% at 50% 35%,#31476f 0%,#1b2740 55%,#0f1626 100%);color:var(--a-text); }
+.style-anime .loading-art { display:none; }
+.style-anime .loading-track { height:6px;border:0;border-radius:6px;background:#ffffff1f;box-shadow:none; }
+.style-anime .loading-track i { background:linear-gradient(90deg,#b99b5c,var(--a-gold),#fff5d8);box-shadow:0 0 12px #e6cc8f99;animation:none;border-radius:6px; }
+.style-anime .loading-status { color:var(--a-dim);font-size:13px;font-weight:500; }
+.style-anime .loading-status #loading-percent { color:var(--a-gold);font-weight:700; }
+.style-anime .loading-tip { border:1px solid var(--a-line);border-radius:30px;background:#ffffff0d;color:var(--a-dim);box-shadow:none; }
+.style-anime .loading-tip b { font:700 13px var(--a-body);color:var(--a-gold);letter-spacing:1px;text-transform:uppercase; }
+
+/* ---------- Logo ---------- */
+.style-anime .game-logo { transform:none;animation:none;line-height:1;color:var(--a-text);align-items:flex-start; }
+.style-anime .loading-logo { align-items:center; }
+.style-anime .logo-sea,.style-anime .logo-survival { -webkit-text-stroke:0;transform:none;text-transform:uppercase;letter-spacing:.14em;text-shadow:0 2px 18px #0a1630cc,0 0 34px #9cc8ff55; }
+.style-anime .logo-sea { font-size:clamp(20px,1.9vw,28px);color:var(--a-gold);margin:0 0 6px;letter-spacing:.5em; }
+.style-anime .logo-survival { font-size:clamp(46px,5vw,76px);background:linear-gradient(#fffdf5 30%,#f1dca8);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 3px 14px #0a1630bb); }
+.style-anime .logo-ribbon { margin-top:14px;padding:9px 2px 0;background:none;border:0;border-top:1px solid var(--a-line);box-shadow:none;transform:none;color:var(--a-cream);font:500 clamp(13px,1.1vw,16px)/1 var(--a-body);letter-spacing:.42em;text-transform:uppercase; }
+.style-anime .logo-ribbon::before,.style-anime .logo-ribbon::after { content:none; }
+.style-anime .logo-ribbon>span { text-shadow:0 1px 8px #0a1630; }
+.style-anime .loading-screen h1.loading-logo { font-family:var(--a-display);color:var(--a-text); }
+.style-anime .loading-logo .logo-survival { font-size:64px; } .style-anime .loading-logo .logo-sea { font-size:22px; }
+
+/* ---------- Title menu ---------- */
+.style-anime #game:not(.playing) .vignette { background:linear-gradient(90deg,#0b1730c7 0%,#0b173066 34%,transparent 62%),linear-gradient(0deg,#0b173080,transparent 35%); }
+.style-anime .title-screen { align-items:flex-start;left:7%; }
+.style-anime .title-screen .main-menu { width:300px;gap:12px; }
+.style-anime .title-screen .menu-button,.style-anime .title-screen .menu-button.play-button,.style-anime .title-screen .menu-button.play-button.start-button,.style-anime .title-screen .menu-button.secondary-start,.style-anime .title-screen .menu-button.continue-button~.start-button {
+  min-height:50px;justify-content:flex-start;padding:0 22px 0 58px;border:1px solid #ffffff26;border-radius:30px;background:#1d2536b8;backdrop-filter:blur(10px);color:var(--a-text);font:500 17px/1 var(--a-body);letter-spacing:.06em;text-shadow:none;box-shadow:0 6px 18px #0812244d;transition:background .18s,color .18s,transform .18s,border-color .18s; }
+.style-anime .title-screen .menu-button.play-button,.style-anime .title-screen .menu-button.play-button.start-button { min-height:56px;background:var(--a-cream);color:var(--a-ink);border-color:#fff;font-weight:700;font-size:18px; }
+.style-anime .title-screen .menu-button:not(:disabled):hover { transform:translateX(6px);background:#fffdf6;color:var(--a-ink);border-color:#fff;box-shadow:0 0 0 3px #ffffff40,0 8px 22px #08122466;filter:none; }
+.style-anime .title-screen .menu-button:not(:disabled):active { transform:translateX(6px) scale(.98);box-shadow:0 2px 8px #08122466; }
+.style-anime .title-screen .menu-icon,.style-anime .title-screen .play-button .menu-icon { left:7px;width:36px;height:36px;border:0;border-radius:50%;background:#2c3650; }
+.style-anime .title-screen .menu-icon svg { width:20px;height:20px; }
+.style-anime #game:not(.playing) .icon-button,.style-anime .playing .top-actions .icon-button,.style-anime .close-button {
+  border:1px solid var(--a-line)!important;background:var(--a-panel);color:var(--a-cream);box-shadow:0 4px 14px #0812244d;backdrop-filter:blur(8px); }
+.style-anime #game:not(.playing) .icon-button:hover,.style-anime .playing .top-actions .icon-button:hover,.style-anime .close-button:hover { transform:none;background:var(--a-cream);color:var(--a-ink);box-shadow:0 0 0 3px #ffffff40; }
+.style-anime .game-icon { stroke:#39425a;stroke-width:1.3; }
+.style-anime .pause-icon,.style-anime .close-button svg { color:inherit;stroke:currentColor; }
+
+/* ---------- Panels ---------- */
+.style-anime .modal-backdrop { background:#0a1226a6;backdrop-filter:blur(8px); }
+.style-anime .panel { background:linear-gradient(#2a3349f2,#1d2536f7);color:var(--a-text);border:1px solid var(--a-line);border-radius:18px;box-shadow:0 0 0 5px #1d253680,var(--a-shadow);animation:anime-fade .28s ease; }
+.style-anime .panel>.eyebrow { padding:0;border:0;background:none;box-shadow:none;color:var(--a-gold);font:700 12px/1 var(--a-body);letter-spacing:.28em; }
+.style-anime .panel h2 { font:700 34px/1.1 var(--a-display);letter-spacing:.06em;color:var(--a-text);margin:12px 0 10px;padding-bottom:14px;border-bottom:1px solid var(--a-line);text-transform:none; }
+.style-anime .completion h2 { border:0;font-size:42px; } .style-anime .completion h2 em { color:var(--a-gold); }
+.style-anime .panel-lead { color:var(--a-dim); } .style-anime .panel-note,.style-anime .panel .panel-note { color:#8f99ad; }
+.style-anime .panel .primary,.style-anime .panel .pause-menu .menu-button { min-height:50px;border:1px solid #ffffff26;border-radius:30px;background:#ffffff12;color:var(--a-text);font:500 17px/1 var(--a-body);letter-spacing:.06em;text-shadow:none;box-shadow:none; }
+.style-anime .panel .primary,.style-anime .pause-menu>.primary { min-height:54px;background:var(--a-cream);color:var(--a-ink);border-color:#fff;font-weight:700;font-size:18px; }
+.style-anime .panel .primary:not(:disabled):hover,.style-anime .panel .pause-menu .menu-button:not(:disabled):hover { transform:none;background:#fffdf6;color:var(--a-ink);box-shadow:0 0 0 3px #ffffff40;filter:none; }
+.style-anime .panel .primary:not(:disabled):active,.style-anime .panel .pause-menu .menu-button:not(:disabled):active { transform:scale(.98);box-shadow:none; }
+.style-anime .panel .primary:disabled { background:#ffffff14;color:#8f99ad;border-color:#ffffff1a;box-shadow:none; }
+.style-anime .small-button { border:1px solid var(--a-line)!important;border-radius:20px;background:#ffffff14;color:var(--a-text);font:700 13px var(--a-body);box-shadow:none; }
+.style-anime .text-button { color:var(--a-gold); }
+.style-anime .settings label,.style-anime .setting-row { border-top:1px solid #ffffff14;color:var(--a-text); }
+.style-anime .settings label small,.style-anime .setting-row small { color:#8f99ad; }
+.style-anime .settings input[type=range] { height:6px;border:0;background:#ffffff26; }
+.style-anime .settings input[type=range]::-webkit-slider-thumb { width:18px;height:18px;background:var(--a-cream);border:0;box-shadow:0 0 0 4px #ece5d840; }
+.style-anime .settings input[type=checkbox] { border:1px solid var(--a-line);background:#ffffff1a;height:26px;width:50px; }
+.style-anime .settings input[type=checkbox]::after { border:0;background:var(--a-cream);width:20px;height:20px; }
+.style-anime .settings input[type=checkbox]:checked { background:#c9ad6c; } .style-anime .settings input[type=checkbox]:checked::after { left:26px; }
+.style-anime .segmented { border:1px solid var(--a-line);border-radius:30px;background:#ffffff12;box-shadow:none; }
+.style-anime .segmented button { color:var(--a-dim);font:500 14px var(--a-body); }
+.style-anime .segmented button.active { background:var(--a-cream);color:var(--a-ink);font-weight:700; }
+.style-anime .controls-list>div { border-bottom:1px solid #ffffff14;color:var(--a-text); }
+.style-anime .controls-list kbd,.style-anime .panel kbd { border:1px solid var(--a-line);border-radius:8px;background:#ffffff14;color:var(--a-gold);font:700 12px/1 var(--a-body);box-shadow:none; }
+.style-anime .tabs button { border:1px solid #ffffff26;border-radius:30px;background:transparent;color:var(--a-dim);font:500 15px/1 var(--a-body);box-shadow:none; }
+.style-anime .tabs button.active { background:var(--a-cream);color:var(--a-ink);font-weight:700;text-shadow:none;border-color:#fff; }
+.style-anime .inventory-item,.style-anime .fish-entry,.style-anime .upgrade-card { background:#ffffff0f;border:1px solid #ffffff1f!important;border-radius:12px;box-shadow:none; }
+.style-anime .inventory-item>span:nth-child(2),.style-anime .fish-entry h3,.style-anime .upgrade-card h3,.style-anime .quest-list h3,.style-anime .inventory-item b,.style-anime .completion-stats strong { color:var(--a-text);font-family:var(--a-body);font-weight:700; }
+.style-anime .inventory-item small,.style-anime .fish-entry p,.style-anime .upgrade-card p,.style-anime .quest-list p,.style-anime .completion-stats span { color:#9aa4b8; }
+.style-anime .quest-list li>span { border:1px solid var(--a-line);background:#ffffff14; }
+.style-anime .quest-list li.done>span,.style-anime .completion-icon { background:#c9ad6c;border:1px solid #fff3; }
+.style-anime .large-map { border:1px solid var(--a-line);border-radius:12px;background:#8fc3ea; }
+
+/* ---------- HUD ---------- */
+.style-anime .playing .journey-card,.style-anime .playing .survival,.style-anime .playing .location-card,.style-anime .playing .fishing-card,.style-anime .playing .toast,.style-anime .playing .interaction,.style-anime .playing .compass-rose {
+  border:1px solid var(--a-line);background:var(--a-panel);color:var(--a-text);box-shadow:0 6px 20px #08122459;backdrop-filter:blur(10px); }
+.style-anime .playing .journey-card { border-radius:14px;border-left:3px solid var(--a-gold); }
+.style-anime .playing .journey-card .eyebrow { padding:0;background:none;color:var(--a-gold);font:700 11px/1 var(--a-body);letter-spacing:.24em; }
+.style-anime .playing .journey-card h2 { font:700 19px/1.2 var(--a-body);color:var(--a-text); }
+.style-anime .playing .journey-card p,.style-anime .playing .journey-card .inline-link,.style-anime .playing .fishing-card p { color:var(--a-dim); }
+.style-anime .objective-progress>span { border:1px solid var(--a-line);background:#ffffff14;color:var(--a-text);font:700 14px/1 var(--a-body); }
+.style-anime .objective-progress>span.done { background:#c9ad6c;color:#2a2f40; }
+.style-anime .playing .journey-card .inline-link kbd,.style-anime .playing .bottom-hints kbd { border:1px solid var(--a-line);background:#1d2536cc;color:var(--a-cream);box-shadow:none; }
+.style-anime .playing .compass-rose small { font:700 14px/1 var(--a-body);letter-spacing:.12em; } .style-anime .playing .compass-rose>div { color:var(--a-gold); }
+.style-anime .speed-pill { background:#ffffff1a;color:var(--a-cream);font:500 12px/1 var(--a-body); } .style-anime .speed-pill.warn { background:#c9ad6c;color:#2a2f40; }
+.style-anime .playing .minimap { border:2px solid #f1e4bfcc;box-shadow:0 0 0 4px #1d2536b3,0 10px 24px #08122466;background:#6faedd; }
+.style-anime .playing .minimap::before { border:0;background:none;color:var(--a-gold);font:700 13px/1 var(--a-body);text-shadow:0 1px 4px #081224; }
+.style-anime .playing .map-caption { border:1px solid var(--a-line);background:var(--a-panel);color:var(--a-cream);font-weight:500; }
+.style-anime .playing .survival { border-radius:14px; }
+.style-anime .playing .meter>span { color:var(--a-text);font-weight:500; } .style-anime .playing .meter>span b { font:700 13px/1 var(--a-body);color:var(--a-gold); }
+.style-anime .playing .meter>div { height:7px;border:0;background:#ffffff24; }
+.style-anime .playing .meter i { background:linear-gradient(90deg,#d8b76a,#fff0c4);border-radius:6px; } .style-anime .playing .meter:nth-child(2) i { background:linear-gradient(90deg,#5fa8e0,#bfe2ff); }
+.style-anime .playing .action-bar { gap:12px; }
+.style-anime .playing .action-bar button,.style-anime .playing .action-bar button:first-child,.style-anime .playing .action-bar button+button { width:56px;height:56px;border:1.5px solid #f1e4bf99;border-radius:50%;background:radial-gradient(circle at 50% 35%,#35405c,#1d2536e6);box-shadow:0 6px 16px #08122466;backdrop-filter:blur(6px); }
+.style-anime .playing .action-bar button:hover { transform:translateY(-2px);background:radial-gradient(circle at 50% 35%,#fffdf6,#e9dfc9);border-color:#fff;box-shadow:0 0 0 3px #ffffff40,0 8px 18px #08122466; }
+.style-anime .playing .action-bar button>svg { width:28px;height:28px; }
+.style-anime .playing .action-bar button>kbd { left:-4px;top:-5px;min-width:18px;height:18px;border:1px solid var(--a-line);background:#1d2536;color:var(--a-gold);font:700 10px/1 var(--a-body); }
+.style-anime .playing .action-bar button>b { border:0;background:var(--a-cream);color:var(--a-ink);font:700 12px/1 var(--a-body);min-width:20px;height:20px; }
+.style-anime .playing .action-bar .slot-name { -webkit-text-stroke:0;color:var(--a-cream);font:500 12px/1 var(--a-body);letter-spacing:.04em;text-shadow:0 1px 3px #081224,0 0 8px #081224; }
+.style-anime .playing .location-card { border-radius:14px; } .style-anime .playing .location-card small { color:var(--a-gold);letter-spacing:.2em;font-size:10px; }
+.style-anime .playing .location-card strong { font:700 18px/1.1 var(--a-display);letter-spacing:.06em;color:var(--a-text); }
+.style-anime .playing .interaction { font:500 15px/1 var(--a-body);border-radius:30px; }
+.style-anime .playing .interaction kbd { border:0;background:var(--a-cream);color:var(--a-ink);font:700 14px/1 var(--a-body); }
+.style-anime .playing .toast { font-weight:500;border-radius:30px; }
+.style-anime .playing .fishing-card h3 { font:700 20px/1.15 var(--a-body);color:var(--a-text); } .style-anime .playing .fishing-card .eyebrow { color:var(--a-gold); }
+.style-anime .playing .fishing-card .bite { background:var(--a-cream);color:var(--a-ink);font:700 15px/1 var(--a-body); }
+.style-anime .island-label strong { border:1px solid var(--a-line);background:var(--a-panel);color:var(--a-text);font:700 15px/1 var(--a-display);letter-spacing:.08em;box-shadow:0 4px 14px #08122466; }
+.style-anime .island-label span { width:1px;background:var(--a-line); }
+@keyframes anime-fade { from { opacity:0;transform:translateY(10px); } to { opacity:1;transform:none; } }
+
+/* Art style switch (shared by both styles) */
+.setting-row { display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:74px;border-top:3px dashed #13314a22;font-size:15px;font-weight:600; }
+.setting-row small { display:block;font-size:12px;font-weight:400;color:#5d7280;margin-top:6px; }
+.segmented { display:inline-flex;padding:3px;border:3px solid var(--title-ink);border-radius:16px;background:#fff;box-shadow:0 3px 0 var(--title-ink); }
+.segmented button { padding:8px 14px;border:0;border-radius:11px;background:none;color:var(--title-ink);font:400 15px/1 var(--game-font);cursor:pointer; }
+.segmented button.active { background:var(--title-sun);color:#fff; }
+.style-anime .game-icon { stroke:#f4f0e6; }
+.style-anime .playing .action-bar button:hover .game-icon,.style-anime .icon-button:hover .game-icon,.style-anime .inventory-item .game-icon { stroke:#39425a; }
+.style-anime .title-screen .menu-icon svg,.style-anime .icon-button .game-icon { stroke:#f4f0e6; }
+
+/* Explorer creator (name + character), shared by both styles */
+.creator { max-width:440px; }
+.name-field { display:grid;gap:8px;margin:18px 0 0;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5d7280; }
+.name-field input { height:52px;padding:0 16px;border:3px solid var(--title-ink);border-radius:14px;background:#fff;color:var(--title-ink);font:400 20px/1 var(--game-font);outline:none;box-shadow:0 4px 0 var(--title-ink); }
+.name-field input:focus { border-color:var(--title-sun-deep); }
+.character-choice { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.character-choice button { height:56px;border:3px solid var(--title-ink);border-radius:14px;background:#fff;color:var(--title-ink);font:400 19px/1 var(--game-font);cursor:pointer;box-shadow:0 4px 0 var(--title-ink); }
+.character-choice button.active { background:var(--title-sun);color:#fff; }
+.creator .primary { margin-top:24px; } .creator .text-button { display:block;margin:14px auto 0; }
+.style-anime .name-field { color:var(--a-gold);letter-spacing:.2em;font-size:11px; }
+.style-anime .name-field input { height:48px;border:1px solid var(--a-line);border-radius:30px;background:#ffffff12;color:var(--a-text);font:500 17px/1 var(--a-body);box-shadow:none;padding:0 20px; }
+.style-anime .name-field input:focus { border-color:var(--a-cream);box-shadow:0 0 0 3px #ffffff26; }
+.style-anime .name-field input::placeholder { color:#8f99ad; }
+.style-anime .character-choice button { height:48px;border:1px solid #ffffff26;border-radius:30px;background:#ffffff12;color:var(--a-dim);font:500 16px/1 var(--a-body);box-shadow:none; }
+.style-anime .character-choice button.active { background:var(--a-cream);color:var(--a-ink);font-weight:700;border-color:#fff; }

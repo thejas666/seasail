@@ -1,0 +1,51 @@
+/* Title screen: a game menu, not a web page. Chunky outlined logo, ribbon banner and pressable buttons
+   in the same cartoon language as the explorer (dark ink outlines, warm sunny colours). */
+@font-face { font-family:'Heyam';font-style:normal;font-weight:400;font-display:block;src:url('./assets/fonts/heyam.woff2') format('woff2');unicode-range:U+20-2F,U+3A-7E; }
+/* The free Heyam file has placeholder badges instead of numerals, so digits fall through to Lilita One. */
+@font-face { font-family:'Lilita One';font-style:normal;font-weight:400;font-display:swap;src:url('./assets/fonts/lilita-one.woff2') format('woff2'); }
+:root { --display-font:"Heyam","Lilita One","Segoe UI",sans-serif; --game-font:"Lilita One","Segoe UI",sans-serif; --title-warm:#ffd45c; --title-warm-deep:#ffb52e; --title-ink:#13314a; --title-cream:#f2fbff; --title-sun:#3db8f5; --title-sun-deep:#1b86d8; --title-coral:#1f6fd0; }
+
+/* Hide the website furniture before play; keep only the round sound / pause buttons. */
+#game:not(.playing) .brand,#game:not(.playing) .chapter,#game:not(.playing) .intro-caption { display:none; }
+#game:not(.playing) .topbar { justify-content:flex-end; }
+#game:not(.playing) .icon-button { width:48px;height:48px;border-radius:50%;background:var(--title-cream);color:var(--title-ink);border:3px solid var(--title-ink);box-shadow:0 4px 0 var(--title-ink);transition:transform .12s,box-shadow .12s; }
+#game:not(.playing) .icon-button:hover { transform:translateY(-2px);box-shadow:0 6px 0 var(--title-ink); }
+#game:not(.playing) .icon-button:active { transform:translateY(3px);box-shadow:0 1px 0 var(--title-ink); }
+#game:not(.playing) .icon-button svg { width:20px;height:20px;stroke-width:2.2; }
+#game:not(.playing) .pause-icon { font:700 18px/1 "Segoe UI",Arial,sans-serif; }
+#game:not(.playing) .vignette { background:radial-gradient(ellipse 60% 85% at 18% 52%,#082a3cb0 0%,#0b354360 45%,transparent 75%),linear-gradient(0deg,#0b2c4050,transparent 30%); }
+
+.title-screen { top:50%;left:6%;width:auto;max-width:none;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center; }
+
+/* Logo */
+.game-logo { margin:0 0 34px;display:flex;flex-direction:column;align-items:center;font-family:var(--display-font);font-weight:400;letter-spacing:0;line-height:.86;color:var(--title-cream);transform:rotate(-3deg);animation:logo-bob 4.5s ease-in-out infinite; }
+.logo-sea,.logo-survival { display:block;-webkit-text-stroke:9px var(--title-ink);paint-order:stroke fill;text-shadow:0 7px 0 var(--title-ink),0 12px 18px #04152466; }
+.logo-sea { font-size:clamp(54px,5.4vw,82px);color:#8fe3f0;margin-bottom:-4px;transform:rotate(2deg); }
+.logo-survival { font-size:clamp(70px,7.6vw,118px); }
+.logo-ribbon { position:relative;margin-top:16px;padding:9px 46px 11px;background:var(--title-coral);color:var(--title-cream);font-size:clamp(15px,1.35vw,20px);line-height:1;-webkit-text-stroke:0;letter-spacing:.5px;border-block:3px solid var(--title-ink);transform:rotate(1.5deg);box-shadow:0 5px 0 var(--title-ink); }
+.logo-ribbon::before,.logo-ribbon::after { content:"";position:absolute;top:8px;width:30px;height:100%;background:#174f9c;border:3px solid var(--title-ink);z-index:-1; }
+.logo-ribbon::before { left:-22px;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,38% 50%); }
+.logo-ribbon::after { right:-22px;clip-path:polygon(0 0,100% 0,62% 50%,100% 100%,0 100%); }
+.logo-ribbon>span { display:block;text-shadow:0 2px 0 #123f7d; }
+
+/* Buttons */
+.title-screen .main-menu { display:grid;gap:14px;width:310px; }
+.title-screen .menu-button { position:relative;display:flex;align-items:center;justify-content:center;gap:0;min-height:60px;padding:0 24px 2px 64px;border:3px solid var(--title-ink);border-radius:18px;background:var(--title-cream);color:var(--title-ink);font:400 23px/1 var(--game-font);letter-spacing:.4px;text-align:center;box-shadow:0 6px 0 var(--title-ink),0 12px 18px #0415244d;transition:transform .12s ease,box-shadow .12s ease,filter .12s;animation:menu-in .5s cubic-bezier(.3,1.4,.6,1) both; }
+.title-screen .menu-button:nth-child(2) { animation-delay:.07s; } .title-screen .menu-button:nth-child(3) { animation-delay:.14s; } .title-screen .menu-button:nth-child(4) { animation-delay:.21s; }
+.title-screen .menu-button:not(:disabled):hover { transform:translateY(-3px);box-shadow:0 9px 0 var(--title-ink),0 16px 22px #0415244d;filter:brightness(1.05); }
+.title-screen .menu-button:not(:disabled):active { transform:translateY(5px);box-shadow:0 1px 0 var(--title-ink),0 4px 8px #0415244d; }
+.title-screen .menu-button:focus-visible { outline:4px solid #fff;outline-offset:4px; }
+.title-screen .menu-icon { position:absolute;left:10px;top:50%;width:40px;height:40px;transform:translateY(-50%);display:grid;place-items:center;border-radius:12px;background:#d6efff;border:2.5px solid var(--title-ink); }
+.title-screen .menu-icon svg { width:22px;height:22px;opacity:1;stroke-width:2.2; }
+.title-screen .menu-button.play-button,.title-screen .menu-button.play-button.start-button { border-color:var(--title-ink);box-shadow:0 6px 0 var(--title-ink),0 12px 18px #0415244d;font-weight:400;min-height:72px;font-size:30px;background:linear-gradient(#ffe88f,var(--title-warm) 45%,var(--title-warm-deep));color:#5a2706;text-shadow:0 2px 0 #fff1b8; }
+.title-screen .play-button .menu-icon { background:#e3f5ff;width:46px;height:46px; }
+.title-screen .menu-button.secondary-start,.title-screen .menu-button.continue-button~.start-button { color:var(--title-ink);border-color:var(--title-ink); background:#bfe8ee; }
+.title-screen .save-error { margin-top:18px;max-width:310px;padding:10px 14px;border:3px solid var(--title-ink);border-radius:12px;background:#ffe1d3;color:#5a2010;font-size:12px!important;text-align:center; }
+
+@keyframes logo-bob { 0%,100% { transform:rotate(-3deg) translateY(0); } 50% { transform:rotate(-2deg) translateY(-6px); } }
+@keyframes menu-in { from { opacity:0;transform:translateY(18px) scale(.94); } to { opacity:1;transform:none; } }
+@media (max-width:700px) { .title-screen { left:50%;transform:translate(-50%,-50%); } .title-screen .main-menu { width:270px; } }
+@media (max-height:680px) { .game-logo { margin-bottom:20px; } .title-screen .main-menu { gap:10px; } .title-screen .menu-button { min-height:50px;font-size:20px; } .title-screen .play-button { min-height:60px;font-size:25px; } }
+
+.game-icon { overflow:visible; }
+.title-screen .menu-icon svg,.icon-button .game-icon { stroke:var(--title-ink); }

@@ -1,3 +1,4 @@
+import {ART_STYLE} from './art-style';
 export const WORLD_SCALE = 2.2;
 export type Resource = 'wood' | 'fiber' | 'scrap' | 'fruit' | 'fish' | 'shell';
 export type Inventory = Record<Resource, number>;
@@ -50,3 +51,10 @@ for(const island of MAP.islands){
 }
 export const COST = {wood:4,fiber:4,scrap:2};
 export const RESOURCE_LABELS: Record<Resource,string> = {wood:'Driftwood',fiber:'Palm fiber',scrap:'Salvaged metal',fruit:'Tropical fruit',fish:'Fresh fish',shell:'Seashells'};
+
+// Anime style: Palm Island is larger, so there is more to explore before the first crossing. The jetty
+// moves out with the shore, the two pickups by the jetty move with it, and the rest spread across the island.
+if(ART_STYLE==='anime'){
+  const palm=MAP.islands[0],grown=46,k=grown/palm.radius,shift=17;palm.radius=grown;palm.dock=[palm.dock[0],palm.dock[1]+shift];
+  for(const p of PICKUPS)if(p.island==='palm'){if(p.z>15&&p.x>10)p.z+=shift;else{p.x=Math.round(p.x*k);p.z=Math.round(p.z*k);}}
+}

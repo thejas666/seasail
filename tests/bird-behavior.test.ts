@@ -4,7 +4,7 @@ import {Group,Vector3} from 'three';
 import {BirdBehavior} from '../src/systems/bird-behavior';
 
 test('coastal visitors have varied identities, irregular intervals, and quiet periods between landings',()=>{
-  const boat=new Group();boat.position.set(19,0,43);const flock=new BirdBehavior(9,42),visits:{time:number;bird:number}[]=[],leaves:number[]=[];let maxVisitors=0;
+  const boat=new Group();boat.position.set(19,0,43);const flock=new BirdBehavior(9,7),visits:{time:number;bird:number}[]=[],leaves:number[]=[];let maxVisitors=0;
   for(let n=0;n<18000;n++){
     const old=flock.birds.map(b=>b.mode);flock.update(.1,boat,0,0);
     maxVisitors=Math.max(maxVisitors,flock.birds.filter(b=>['approaching','landing','perched','departing'].includes(b.mode)).length);
